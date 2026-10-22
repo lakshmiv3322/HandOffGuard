@@ -1,0 +1,1 @@
+"""HandoffGuard backend application package."""

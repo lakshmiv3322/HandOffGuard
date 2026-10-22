@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite
+*.sqlite3
+venv/
+.venv/
+.pytest_cache/
+.coverage
+.env
+!.env.example
