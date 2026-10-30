@@ -23,7 +23,7 @@ class Settings(BaseSettings):
 
     # Database
     database_engine: str = Field(
-        default="sqlite",
+        default="exasol",
         description="Database engine: 'sqlite', 'postgres', or 'exasol'",
     )
     sqlite_url: str = Field(
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     exasol_password: str = Field(default="exasol", description="Exasol password")
     exasol_schema: str = Field(default="HANDOFFGUARD", description="Exasol schema")
     exasol_encryption: bool = Field(
-        default=False,
+        default=True,
         description="Enable TLS encryption for Exasol connection"
     )
 

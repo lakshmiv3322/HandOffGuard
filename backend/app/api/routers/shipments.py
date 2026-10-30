@@ -106,6 +106,7 @@ async def list_shipments(
 
         items.append(
             ShipmentListItem(
+                id=s.shipment_id,
                 shipment_id=s.shipment_id,
                 shipment_code=s.shipment_code,
                 product_name=s.product.name if s.product else "Standard Pharmaceutical",
@@ -130,7 +131,7 @@ async def list_shipments(
 
 @router.get("/{shipment_id}", response_model=ShipmentDetail)
 async def get_shipment_detail(
-    shipment_id: int,
+    shipment_id: str,
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),
     logger_repo: AbstractLoggerRepository = Depends(get_logger_repo),
@@ -163,7 +164,7 @@ async def get_shipment_detail(
         ProductResponse.model_validate(shipment.product)
         if shipment.product
         else ProductResponse(
-            product_id=0,
+            product_id="0",
             name="General Biologic",
             min_temp_c=2.0,
             max_temp_c=8.0,
@@ -173,6 +174,7 @@ async def get_shipment_detail(
     )
 
     return ShipmentDetail(
+        id=shipment.shipment_id,
         shipment_id=shipment.shipment_id,
         shipment_code=shipment.shipment_code,
         product=prod_res,
@@ -191,7 +193,7 @@ async def get_shipment_detail(
 
 @router.get("/{shipment_id}/custody-timeline", response_model=CustodyTimelineResponse)
 async def get_custody_timeline(
-    shipment_id: int,
+    shipment_id: str,
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),
     logger_repo: AbstractLoggerRepository = Depends(get_logger_repo),
@@ -279,7 +281,7 @@ async def get_custody_timeline(
 
 @router.get("/{shipment_id}/handoffs", response_model=list[HandoffResponse])
 async def list_shipment_handoffs(
-    shipment_id: int,
+    shipment_id: str,
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),
 ):
     """Returns handoffs for a shipment ordered by sequence_no."""
@@ -289,7 +291,7 @@ async def list_shipment_handoffs(
 
 @router.get("/{shipment_id}/attribution-summary", response_model=list[AttributionSummaryItem])
 async def get_shipment_attribution_summary(
-    shipment_id: int,
+    shipment_id: str,
     excursion_repo: AbstractExcursionRepository = Depends(get_excursion_repo),
     attribution_repo: AbstractAttributionRepository = Depends(get_attribution_repo),
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),

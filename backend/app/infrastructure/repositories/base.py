@@ -33,7 +33,7 @@ class AbstractProductRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, product_id: int) -> Optional[Product]:
+    async def get_by_id(self, product_id: str | int) -> Optional[Product]:
         """Return a product by primary key, or None if not found."""
         ...
 
@@ -61,7 +61,7 @@ class AbstractShipmentRepository(ABC):
         ...
 
     @abstractmethod
-    async def get_by_id(self, shipment_id: int) -> Optional[Shipment]:
+    async def get_by_id(self, shipment_id: str | int) -> Optional[Shipment]:
         """Return a shipment by primary key (with product joined), or None."""
         ...
 

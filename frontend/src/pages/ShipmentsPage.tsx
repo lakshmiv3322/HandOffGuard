@@ -112,8 +112,8 @@ export function ShipmentsPage() {
               <tbody className="divide-y divide-slate-100 text-sm">
                 {data.items.map((s) => (
                   <tr
-                    key={s.shipment_id}
-                    onClick={() => handleRowClick(s.shipment_id)}
+                    key={s.id ?? s.shipment_id}
+                    onClick={() => handleRowClick(s.id ?? s.shipment_id)}
                     className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                   >
                     <td className="py-3.5 px-4 font-semibold text-blue-600">

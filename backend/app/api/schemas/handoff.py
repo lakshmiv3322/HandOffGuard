@@ -10,8 +10,9 @@ from pydantic import BaseModel, ConfigDict
 class HandoffResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    handoff_id: int
-    shipment_id: int
+    id: Optional[str | int] = None
+    handoff_id: str | int
+    shipment_id: str | int
     sequence_no: int
     handoff_type: str
     from_party: str

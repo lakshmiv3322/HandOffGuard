@@ -75,17 +75,14 @@ def is_exasol() -> bool:
     return settings.database_engine.lower() == "exasol"
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+async def get_db_session() -> AsyncGenerator[AsyncSession | None, None]:
     """Yield an active async database session (SQLite/Postgres only)."""
     backend = get_db_backend()
     if isinstance(backend, DevDatabaseBackend):
         async with backend.get_session() as session:
             yield session
     else:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Active database engine does not provide SQLAlchemy sessions.",
-        )
+        yield None
 
 
 # ------------------------------------------------------------------

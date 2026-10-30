@@ -13,33 +13,36 @@ class ExasolProductRepository(AbstractProductRepository):
 
     async def get_all(self) -> list[Product]:
         rows = await get_pool().execute(
-            "SELECT product_id, name, min_temp_c, max_temp_c, "
-            "       allowed_excursion_minutes, thermal_mass_class "
-            "FROM HANDOFFGUARD.products "
-            "ORDER BY name"
+            "SELECT ID, NAME, MIN_TEMP_C, MAX_TEMP_C, "
+            "       MAX_EXCURSION_MINUTES, CATEGORY AS THERMAL_MASS_CLASS "
+            "FROM HANDOFFGUARD.PRODUCTS "
+            "ORDER BY NAME"
         )
         return [self._row_to_product(r) for r in rows]
 
-    async def get_by_id(self, product_id: int) -> Optional[Product]:
+    async def get_by_id(self, product_id: str | int) -> Optional[Product]:
         rows = await get_pool().execute(
-            "SELECT product_id, name, min_temp_c, max_temp_c, "
-            "       allowed_excursion_minutes, thermal_mass_class "
-            "FROM HANDOFFGUARD.products WHERE product_id = {product_id!d}",
-            {"product_id": product_id},
+            "SELECT ID, NAME, MIN_TEMP_C, MAX_TEMP_C, "
+            "       MAX_EXCURSION_MINUTES, CATEGORY AS THERMAL_MASS_CLASS "
+            "FROM HANDOFFGUARD.PRODUCTS WHERE ID = {product_id}",
+            {"product_id": str(product_id)},
         )
         return self._row_to_product(rows[0]) if rows else None
 
     @staticmethod
     def _row_to_product(r: dict) -> Product:
+        def _k(name: str):
+            return r.get(name.upper()) or r.get(name)
+
+        min_temp = _k("MIN_TEMP_C")
+        max_temp = _k("MAX_TEMP_C")
+        max_exc = _k("MAX_EXCURSION_MINUTES") or _k("ALLOWED_EXCURSION_MINUTES")
+
         return Product(
-            product_id=int(r.get("PRODUCT_ID") or r.get("product_id")),
-            name=str(r.get("NAME") or r.get("name")),
-            min_temp_c=float(r.get("MIN_TEMP_C") or r.get("min_temp_c")),
-            max_temp_c=float(r.get("MAX_TEMP_C") or r.get("max_temp_c")),
-            allowed_excursion_minutes=float(
-                r.get("ALLOWED_EXCURSION_MINUTES") or r.get("allowed_excursion_minutes")
-            ),
-            thermal_mass_class=str(
-                r.get("THERMAL_MASS_CLASS") or r.get("thermal_mass_class")
-            ),
+            product_id=str(_k("ID") or _k("PRODUCT_ID")),
+            name=str(_k("NAME") or ""),
+            min_temp_c=float(min_temp) if min_temp is not None else 0.0,
+            max_temp_c=float(max_temp) if max_temp is not None else 0.0,
+            allowed_excursion_minutes=float(max_exc) if max_exc is not None else 0.0,
+            thermal_mass_class=str(_k("THERMAL_MASS_CLASS") or _k("CATEGORY") or "Standard"),
         )

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import ssl
 import time
 from typing import Any, Optional
 
@@ -84,7 +85,9 @@ class ExasolPool:
                     user=self._user,
                     password=self._password,
                     schema=self._schema,
-                    websocket_sslopt={"cert_reqs": 0} if not self._encryption else {},
+                    encryption=self._encryption,
+                    fetch_dict=True,
+                    websocket_sslopt={"cert_reqs": ssl.CERT_NONE},
                 )
                 logger.info(
                     "Exasol connection established to %s (schema=%s)", self._dsn, self._schema

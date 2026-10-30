@@ -77,6 +77,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.infrastructure.db.exasol_pool import ExasolConnectionError, ExasolQueryError
+
+@app.exception_handler(ExasolConnectionError)
+async def exasol_connection_exception_handler(request: Request, exc: ExasolConnectionError):
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": f"Exasol database connection failure: {exc}"},
+    )
+
+@app.exception_handler(ExasolQueryError)
+async def exasol_query_exception_handler(request: Request, exc: ExasolQueryError):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": f"Exasol query execution failure: {exc}"},
+    )
+
 # Include routers
 app.include_router(health_router)
 app.include_router(meta_router)

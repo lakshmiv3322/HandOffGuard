@@ -29,6 +29,7 @@ export interface Product {
 
 // ─── Shipment list item ───────────────────────────────────────
 export interface ShipmentListItem {
+  id?: string | number;
   shipment_id: string | number;
   shipment_code: string;
   product_name: string;
@@ -44,6 +45,7 @@ export interface ShipmentListItem {
 
 // ─── Shipment detail ──────────────────────────────────────────
 export interface ShipmentDetail {
+  id?: string | number;
   shipment_id: string | number;
   shipment_code: string;
   product: Product;

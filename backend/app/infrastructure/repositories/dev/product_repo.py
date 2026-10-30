@@ -33,9 +33,10 @@ class DevProductRepository(AbstractProductRepository):
         result = await self._session.execute(select(ProductORM))
         return [_orm_to_domain(row) for row in result.scalars().all()]
 
-    async def get_by_id(self, product_id: int) -> Optional[Product]:
+    async def get_by_id(self, product_id: str | int) -> Optional[Product]:
+        pid = int(product_id) if str(product_id).isdigit() else 0
         result = await self._session.execute(
-            select(ProductORM).where(ProductORM.product_id == product_id)
+            select(ProductORM).where(ProductORM.product_id == pid)
         )
         row = result.scalar_one_or_none()
         return _orm_to_domain(row) if row else None

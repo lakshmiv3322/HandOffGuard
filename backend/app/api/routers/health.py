@@ -57,9 +57,9 @@ async def exasol_health():
         pool = get_pool()
         col_rows = await pool.execute(
             "SELECT COLUMN_NAME FROM SYS.EXA_ALL_COLUMNS "
-            "WHERE TABLE_SCHEMA = 'HANDOFFGUARD' "
-            "  AND TABLE_NAME   = 'LOGGER_READINGS' "
-            "  AND COLUMN_NAME  = 'HANDOFF_ID'"
+            "WHERE COLUMN_SCHEMA = 'HANDOFFGUARD' "
+            "  AND COLUMN_TABLE   = 'LOGGER_READINGS' "
+            "  AND COLUMN_NAME    = 'HANDOFF_ID'"
         )
         handoff_id_absent = len(col_rows) == 0
     except Exception:

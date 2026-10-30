@@ -40,39 +40,41 @@ class ExasolDatabaseBackend(DatabaseBackend):
         self._encryption = encryption
         self._pool: ExasolPool | None = None
 
-    async def initialise(self) -> None:
-        """Create the connection pool. Call during app startup."""
-        self._pool = init_pool(
-            host=self._host,
-            port=self._port,
-            user=self._user,
-            password=self._password,
-            schema=self._schema,
-            encryption=self._encryption,
-        )
+    async def get_session(self):
+        """Yield None as Exasol does not use SQLAlchemy sessions."""
+        yield None
 
-    def get_pool(self) -> ExasolPool:
-        """Return the active pool. Raises if not initialised."""
+    def _ensure_pool(self) -> ExasolPool:
         if self._pool is None:
-            raise ExasolConnectionError(
-                "ExasolDatabaseBackend.initialise() has not been called."
+            self._pool = init_pool(
+                host=self._host,
+                port=self._port,
+                user=self._user,
+                password=self._password,
+                schema=self._schema,
+                encryption=self._encryption,
             )
         return self._pool
 
+    async def initialise(self) -> None:
+        """Create the connection pool. Call during app startup."""
+        self._ensure_pool()
+
+    def get_pool(self) -> ExasolPool:
+        """Return the active pool."""
+        return self._ensure_pool()
+
     async def health_check(self) -> dict:
         """Return connection health dict."""
-        if self._pool is None:
+        try:
+            pool = self._ensure_pool()
+            return await pool.health()
+        except Exception as exc:
             return {
                 "db_status": "error",
                 "db_engine": "exasol",
-                "detail": (
-                    "Pool not initialised. Check EXASOL_HOST / EXASOL_PORT / "
-                    "EXASOL_USER / EXASOL_PASSWORD env vars."
-                ),
+                "detail": str(exc),
             }
-        try:
-            return await self._pool.health()
-        except Exception as exc:
             return {
                 "db_status": "error",
                 "db_engine": "exasol",

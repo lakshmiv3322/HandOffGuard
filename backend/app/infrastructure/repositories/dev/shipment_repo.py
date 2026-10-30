@@ -87,12 +87,15 @@ class DevShipmentRepository(AbstractShipmentRepository):
         result = await self._session.execute(query)
         return [_orm_to_domain(row) for row in result.scalars().all()], total
 
-    async def get_by_id(self, shipment_id: int) -> Optional[Shipment]:
-        result = await self._session.execute(
-            select(ShipmentORM)
-            .options(selectinload(ShipmentORM.product))
-            .where(ShipmentORM.shipment_id == shipment_id)
-        )
+    async def get_by_id(self, shipment_id: str | int) -> Optional[Shipment]:
+        query = select(ShipmentORM).options(selectinload(ShipmentORM.product))
+        if isinstance(shipment_id, int) or (isinstance(shipment_id, str) and shipment_id.isdigit()):
+            query = query.where(
+                (ShipmentORM.shipment_id == int(shipment_id)) | (ShipmentORM.shipment_code == str(shipment_id))
+            )
+        else:
+            query = query.where(ShipmentORM.shipment_code == str(shipment_id))
+        result = await self._session.execute(query)
         row = result.scalar_one_or_none()
         return _orm_to_domain(row) if row else None
 

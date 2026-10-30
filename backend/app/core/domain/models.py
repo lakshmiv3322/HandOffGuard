@@ -31,12 +31,16 @@ from app.core.domain.constants import (
 class Product:
     """A pharmaceutical product with its cold-chain temperature requirements."""
 
-    product_id: int
+    product_id: str | int
     name: str
     min_temp_c: float
     max_temp_c: float
-    allowed_excursion_minutes: float
-    thermal_mass_class: str
+    allowed_excursion_minutes: float = 0.0
+    thermal_mass_class: str = "Standard"
+
+    @property
+    def id(self) -> str | int:
+        return self.product_id
 
 
 # ---------------------------------------------------------------------------
@@ -48,17 +52,21 @@ class Product:
 class Shipment:
     """A single cold-chain shipment from origin to destination."""
 
-    shipment_id: int
+    shipment_id: str | int
     shipment_code: str
-    product_id: int
+    product_id: str | int
     origin: str
     destination: str
-    dispatched_at: datetime
-    expected_delivery_at: datetime
+    dispatched_at: Optional[datetime]
+    expected_delivery_at: Optional[datetime]
     status: str
 
     # Joined / computed fields (not stored in the shipments table)
     product: Optional[Product] = field(default=None, compare=False)
+
+    @property
+    def id(self) -> str | int:
+        return self.shipment_id
 
 
 # ---------------------------------------------------------------------------
@@ -75,8 +83,8 @@ class Handoff:
     (e.g., a courier, warehouse, airline) is responsible for the shipment.
     """
 
-    handoff_id: int
-    shipment_id: int
+    handoff_id: str | int
+    shipment_id: str | int
     sequence_no: int
     handoff_type: str
     from_party: str
@@ -89,6 +97,10 @@ class Handoff:
     clock_skew_seconds: float
     dwell_minutes: float
 
+    @property
+    def id(self) -> str | int:
+        return self.handoff_id
+
 
 # ---------------------------------------------------------------------------
 # Loggers
@@ -99,12 +111,16 @@ class Handoff:
 class Logger:
     """A temperature-logging device assigned to a shipment."""
 
-    logger_id: int
+    logger_id: str | int
     device_type: str
-    assigned_shipment_id: int
+    assigned_shipment_id: str | int
     sampling_interval_seconds: int
     clock_skew_seconds: float
     data_quality_flag: str
+
+    @property
+    def id(self) -> str | int:
+        return self.logger_id
 
 
 # ---------------------------------------------------------------------------
@@ -121,13 +137,17 @@ class TemperatureReading:
     Reading-to-handoff assignment is performed in code via interval overlap.
     """
 
-    reading_id: int
-    logger_id: int
+    reading_id: str | int
+    logger_id: str | int
     recorded_at_utc: datetime
     temperature_c: float
     humidity_pct: Optional[float]
     battery_pct: Optional[float]
     quality_flag: str
+
+    @property
+    def id(self) -> str | int:
+        return self.reading_id
 
 
 # ---------------------------------------------------------------------------
@@ -139,15 +159,19 @@ class TemperatureReading:
 class ExcursionEvent:
     """A detected temperature excursion event for a shipment."""
 
-    excursion_id: int
-    shipment_id: int
+    excursion_id: str | int
+    shipment_id: str | int
     started_at_utc: datetime
     ended_at_utc: datetime
     duration_minutes: float
     peak_temp_c: float
     severity: str
-    ground_truth_handoff_id: Optional[int]
+    ground_truth_handoff_id: Optional[str | int]
     ground_truth_cause: Optional[str]
+
+    @property
+    def id(self) -> str | int:
+        return self.excursion_id
 
 
 # ---------------------------------------------------------------------------

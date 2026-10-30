@@ -11,28 +11,28 @@ from app.infrastructure.repositories.exasol.connection import get_pool, _ts
 
 class ExasolExcursionRepository(AbstractExcursionRepository):
 
-    async def get_by_shipment(self, shipment_id: int) -> list[ExcursionEvent]:
+    async def get_by_shipment(self, shipment_id: str | int) -> list[ExcursionEvent]:
         rows = await get_pool().execute(
-            "SELECT excursion_id, shipment_id, "
-            "       started_at_utc, ended_at_utc, "
-            "       peak_temp_c, duration_minutes, severity, "
-            "       ground_truth_handoff_id, ground_truth_cause "
-            "FROM HANDOFFGUARD.excursions "
-            "WHERE shipment_id = {shipment_id!d} "
-            "ORDER BY started_at_utc",
-            {"shipment_id": shipment_id},
+            "SELECT ID AS EXCURSION_ID, SHIPMENT_ID, "
+            "       STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
+            "       PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "       HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
+            "FROM HANDOFFGUARD.EXCURSION_EVENTS "
+            "WHERE SHIPMENT_ID = {shipment_id} "
+            "ORDER BY STARTED_AT",
+            {"shipment_id": str(shipment_id)},
         )
         return [self._row_to_excursion(r) for r in rows]
 
-    async def get_by_id(self, excursion_id: int) -> Optional[ExcursionEvent]:
+    async def get_by_id(self, excursion_id: str | int) -> Optional[ExcursionEvent]:
         rows = await get_pool().execute(
-            "SELECT excursion_id, shipment_id, "
-            "       started_at_utc, ended_at_utc, "
-            "       peak_temp_c, duration_minutes, severity, "
-            "       ground_truth_handoff_id, ground_truth_cause "
-            "FROM HANDOFFGUARD.excursions "
-            "WHERE excursion_id = {excursion_id!d}",
-            {"excursion_id": excursion_id},
+            "SELECT ID AS EXCURSION_ID, SHIPMENT_ID, "
+            "       STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
+            "       PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "       HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
+            "FROM HANDOFFGUARD.EXCURSION_EVENTS "
+            "WHERE ID = {excursion_id}",
+            {"excursion_id": str(excursion_id)},
         )
         return self._row_to_excursion(rows[0]) if rows else None
 
@@ -42,17 +42,17 @@ class ExasolExcursionRepository(AbstractExcursionRepository):
             return r.get(n.upper()) or r.get(n)
 
         return ExcursionEvent(
-            excursion_id=int(_k("excursion_id")),
-            shipment_id=int(_k("shipment_id")),
-            started_at_utc=_ts(_k("started_at_utc")),
-            ended_at_utc=_ts(_k("ended_at_utc")),
-            duration_minutes=float(_k("duration_minutes") or 0),
-            peak_temp_c=float(_k("peak_temp_c") or 0),
-            severity=str(_k("severity") or "unknown"),
+            excursion_id=str(_k("EXCURSION_ID") or _k("ID") or ""),
+            shipment_id=str(_k("SHIPMENT_ID") or ""),
+            started_at_utc=_ts(_k("STARTED_AT_UTC")),
+            ended_at_utc=_ts(_k("ENDED_AT_UTC")),
+            duration_minutes=float(_k("DURATION_MINUTES") or 0),
+            peak_temp_c=float(_k("PEAK_TEMP_C") or 0),
+            severity=str(_k("SEVERITY") or "unknown"),
             ground_truth_handoff_id=(
-                int(_k("ground_truth_handoff_id"))
-                if _k("ground_truth_handoff_id") is not None
+                str(_k("GROUND_TRUTH_HANDOFF_ID"))
+                if _k("GROUND_TRUTH_HANDOFF_ID") is not None
                 else None
             ),
-            ground_truth_cause=_k("ground_truth_cause"),
+            ground_truth_cause=_k("GROUND_TRUTH_CAUSE"),
         )

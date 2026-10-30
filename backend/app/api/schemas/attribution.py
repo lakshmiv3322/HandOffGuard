@@ -11,7 +11,7 @@ class AttributionHandoffItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     rank: int
-    handoff_id: int
+    handoff_id: str | int
     handoff_label: str
     sequence_no: int
     handoff_type: str
@@ -36,7 +36,7 @@ class AttributionHandoffItem(BaseModel):
 
 
 class NaiveBaselineComparison(BaseModel):
-    handoff_id: Optional[int] = None
+    handoff_id: Optional[str | int] = None
     handoff_label: str
     first_crossing_utc: Optional[str] = None
     agrees_with_top_ranked: bool
@@ -44,7 +44,7 @@ class NaiveBaselineComparison(BaseModel):
 
 
 class AttributionResponse(BaseModel):
-    excursion_id: int
+    excursion_id: str | int
     excursion: ExcursionResponse
     ranked_handoffs: list[AttributionHandoffItem]
     top_ranked_handoff: Optional[AttributionHandoffItem] = None
@@ -54,11 +54,11 @@ class AttributionResponse(BaseModel):
 
 
 class AttributionSummaryItem(BaseModel):
-    excursion_id: int
+    excursion_id: str | int
     severity: str
     duration_minutes: float
     peak_temp_c: float
-    top_handoff_id: Optional[int] = None
+    top_handoff_id: Optional[str | int] = None
     top_handoff_label: Optional[str] = None
     top_exposure_share_pct: float = 0.0
     confidence_label: str = "Low"
