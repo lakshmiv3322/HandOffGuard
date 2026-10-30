@@ -10,6 +10,7 @@ interface HandoffCardProps {
   isHighlighted: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  onClick?: () => void;
 }
 
 export function HandoffCard({
@@ -20,6 +21,7 @@ export function HandoffCard({
   isHighlighted,
   onMouseEnter,
   onMouseLeave,
+  onClick,
 }: HandoffCardProps) {
   const navigate = useNavigate();
 
@@ -32,42 +34,37 @@ export function HandoffCard({
     return exStart < hEnd && exEnd > hStart;
   });
 
-  const handleClick = () => {
-    if (overlappingExcursion) {
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (overlappingExcursion) {
       navigate(
         `/shipments/${shipmentId}/excursions/${overlappingExcursion.excursion_id}`,
       );
     }
   };
 
-  const isClickable = !!overlappingExcursion;
-
   return (
     <div
       id={`handoff-${handoff.handoff_id}`}
-      role={isClickable ? 'button' : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={
-        isClickable
-          ? `Handoff #${handoff.sequence_no}: ${handoff.from_party} to ${handoff.to_party}. Click to view attribution.`
-          : `Handoff #${handoff.sequence_no}: ${handoff.from_party} to ${handoff.to_party}`
-      }
+      role="button"
+      tabIndex={0}
+      aria-label={`Handoff #${handoff.sequence_no}: ${handoff.from_party} to ${handoff.to_party}. Click to open telemetry drilldown.`}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       onFocus={onMouseEnter}
       onBlur={onMouseLeave}
-      onClick={isClickable ? handleClick : undefined}
+      onClick={handleCardClick}
       onKeyDown={(e) => {
-        if (isClickable && (e.key === 'Enter' || e.key === ' ')) handleClick();
+        if (e.key === 'Enter' || e.key === ' ') handleCardClick();
       }}
       className={`
-        relative rounded-lg border p-4 transition-all
+        relative rounded-lg border p-4 transition-all cursor-pointer text-left
         ${isSuspected
           ? 'border-orange-400 bg-orange-50 shadow-md ring-2 ring-orange-300'
           : isHighlighted
-            ? 'border-blue-300 bg-blue-50 shadow-sm'
-            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}
-        ${isClickable ? 'cursor-pointer' : 'cursor-default'}
+            ? 'border-blue-400 bg-blue-50 shadow-sm ring-1 ring-blue-300'
+            : 'border-slate-200 bg-white hover:border-blue-300 hover:shadow-sm hover:bg-slate-50'}
       `}
     >
       {/* Sequence badge */}

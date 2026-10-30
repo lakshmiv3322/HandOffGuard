@@ -41,7 +41,7 @@ EXPOSURE_LIMITATION_DISCLAIMER = (
 )
 
 ATTRIBUTION_LEGAL_DISCLAIMER = (
-    "This is an evidence-based estimate of likely contribution, not a legal determination of liability."
+    "This is an investigation aid. It does not determine product temperature, liability, or responsibility. Final disposition remains with the quality team."
 )
 
 KNOWN_LIMITATIONS = [

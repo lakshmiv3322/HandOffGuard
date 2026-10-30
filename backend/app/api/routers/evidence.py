@@ -132,6 +132,6 @@ async def get_evidence_report(
         ],
         "limitations": [
             "Exposure is estimated from ambient/logger temperature and time. It is not a direct measurement of product-core temperature; thermal mass, packaging, and product-specific heat transfer are not modelled in this prototype.",
-            "This prototype assessment provides probabilistic evidence of thermal breach, not a legal or regulatory determination of liability.",
+            "This is an investigation aid. It does not determine product temperature, liability, or responsibility. Final disposition remains with the quality team.",
         ],
     }

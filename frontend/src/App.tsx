@@ -4,6 +4,7 @@ import { TimelinePage } from './pages/TimelinePage';
 import { AttributionPage } from './pages/AttributionPage';
 import { EvidenceReportPage } from './pages/EvidenceReportPage';
 import { PreventionPage } from './pages/PreventionPage';
+import { BenchmarkPage } from './pages/BenchmarkPage';
 
 export default function App() {
   return (
@@ -51,6 +52,18 @@ export default function App() {
             >
               Prevention Prototype
             </NavLink>
+            <NavLink
+              to="/exasol/benchmark"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-700 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`
+              }
+            >
+              Exasol Benchmark
+            </NavLink>
           </nav>
         </div>
       </header>
@@ -69,6 +82,7 @@ export default function App() {
             element={<EvidenceReportPage />}
           />
           <Route path="/prevention" element={<PreventionPage />} />
+          <Route path="/exasol/benchmark" element={<BenchmarkPage />} />
         </Routes>
       </main>
 

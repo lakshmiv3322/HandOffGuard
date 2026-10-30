@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTimeline } from '../hooks/useTimeline';
+import { useTelemetryDrilldown } from '../hooks/useTelemetryDrilldown';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
 import { TemperatureChart } from '../components/charts/TemperatureChart';
@@ -11,13 +12,19 @@ import { HandoffCard } from '../components/timeline/HandoffCard';
 import { DataQualitySummary } from '../components/timeline/DataQualitySummary';
 import { ClockSkewIndicator } from '../components/timeline/ClockSkewIndicator';
 import { MembershipTable } from '../components/timeline/MembershipTable';
+import { TelemetryDrilldownModal } from '../components/timeline/TelemetryDrilldownModal';
+import { ExasolQueryInsights } from '../components/common/ExasolQueryInsights';
 import { Disclaimer } from '../components/common/Disclaimer';
 
 export function TimelinePage() {
   const { shipment_id } = useParams<{ shipment_id: string }>();
   const navigate = useNavigate();
   const { data: timeline, loading, error, refetch } = useTimeline(shipment_id);
+  const { data: drilldownData } = useTelemetryDrilldown(shipment_id);
+
   const [highlightedHandoffId, setHighlightedHandoffId] = useState<string | number | null>(null);
+  const [selectedDrilldownHandoffId, setSelectedDrilldownHandoffId] = useState<string | number | null>(null);
+  const [isDrilldownOpen, setIsDrilldownOpen] = useState<boolean>(false);
 
   if (loading) {
     return (
@@ -165,13 +172,27 @@ export function TimelinePage() {
 
       {/* Custody Handoffs Grid */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
-            Custody Handoff Windows ({handoffs.length})
-          </h3>
-          <p className="text-xs text-slate-400">
-            Hover to isolate in chart. Click an excursion-linked card to inspect attribution.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+              Custody Handoff Windows ({handoffs.length})
+            </h3>
+            <p className="text-xs text-slate-400">
+              Click any handoff to launch detailed high-resolution telemetry drilldown.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setSelectedDrilldownHandoffId(null);
+              setIsDrilldownOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition-colors self-start sm:self-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Open Telemetry Drilldown
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -191,6 +212,10 @@ export function TimelinePage() {
                 isHighlighted={isHighlighted}
                 onMouseEnter={() => setHighlightedHandoffId(h.handoff_id)}
                 onMouseLeave={() => setHighlightedHandoffId(null)}
+                onClick={() => {
+                  setSelectedDrilldownHandoffId(h.handoff_id);
+                  setIsDrilldownOpen(true);
+                }}
               />
             );
           })}
@@ -203,8 +228,23 @@ export function TimelinePage() {
         <ClockSkewIndicator corrections={clock_skew_corrections} />
       </div>
 
+      {/* Exasol Query Insights Panel */}
+      <ExasolQueryInsights
+        queryIdentifier="shipment_interval_membership"
+        shipmentId={shipment.shipment_id}
+      />
+
       {/* Exasol Interval Join: Reading-to-Handoff Membership */}
       <MembershipTable shipmentId={Number(shipment.shipment_id)} />
+
+      {/* Telemetry Drilldown Modal */}
+      {isDrilldownOpen && drilldownData && (
+        <TelemetryDrilldownModal
+          data={drilldownData}
+          initialHandoffId={selectedDrilldownHandoffId}
+          onClose={() => setIsDrilldownOpen(false)}
+        />
+      )}
 
       {/* Mandatory scientific limitation disclaimer */}
       <Disclaimer

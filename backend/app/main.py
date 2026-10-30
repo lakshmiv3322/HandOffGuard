@@ -24,6 +24,8 @@ from app.api.routers import (
     meta_router,
     prevention_router,
     shipments_router,
+    telemetry_router,
+    insights_router,
 )
 from app.config import settings
 from app.infrastructure.db.dev_db import DevDatabaseBackend
@@ -85,6 +87,8 @@ app.include_router(prevention_router)
 app.include_router(ingest_router)
 app.include_router(membership_router)
 app.include_router(exposure_router)
+app.include_router(telemetry_router)
+app.include_router(insights_router)
 
 
 # Custom documentation endpoint for future Exasol integration

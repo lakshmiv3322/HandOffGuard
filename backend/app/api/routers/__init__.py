@@ -9,6 +9,8 @@ from app.api.routers.prevention import router as prevention_router
 from app.api.routers.ingest import router as ingest_router
 from app.api.routers.membership import router as membership_router
 from app.api.routers.exposure import router as exposure_router
+from app.api.routers.telemetry import router as telemetry_router
+from app.api.routers.insights import router as insights_router
 
 __all__ = [
     "health_router",
@@ -20,4 +22,6 @@ __all__ = [
     "ingest_router",
     "membership_router",
     "exposure_router",
+    "telemetry_router",
+    "insights_router",
 ]

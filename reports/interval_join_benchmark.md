@@ -1,6 +1,6 @@
 # HandoffGuard — Interval Join Performance Benchmark
 
-**Date**: 2026-10-30T14:12:16.770900+00:00  
+**Date**: 2026-10-30T15:22:07.407943+00:00  
 **Dataset Scale**: 100,000 logger readings across 500 handoff windows  
 **Hardware**: Windows-11-10.0.26200-SP0 | 4 Cores | 16.0 GB RAM
 
@@ -12,7 +12,7 @@ In pharmaceutical cold chains, logger temperature telemetry does not store custo
 
 | Engine | Readings Processed | Execution Time (s) | Throughput (rows/sec) | Status |
 |---|---|---|---|---|
-| **Standard Relational SQL (SQLite Row-Store Engine)** | 100,000 | **0.4165s** | 240,094.0 | `completed` |
+| **Standard Relational SQL (SQLite Row-Store Engine)** | 100,000 | **0.5076s** | 196,987.0 | `completed` |
 | **DuckDB** | 100,000 | **N/As** | N/A | `skipped` |
 | **Exasol Personal (Columnar MPP Engine - Baseline Projected)** | 100,000 | **0.082s** | 1,219,512.0 | `projected` |
 
