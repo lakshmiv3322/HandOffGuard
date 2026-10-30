@@ -1,0 +1,22 @@
+{
+  "name": "handoffguard",
+  "version": "1.0.0",
+  "description": "Pharmaceutical Cold-Chain Custody-Attribution Application | ExaThon India 2026",
+  "scripts": {
+    "seed:demo": "python init_db.py",
+    "seed:sqlite": "python backend/scripts/seed_data.py",
+    "validate:attribution": "python scripts/validate_attribution.py",
+    "benchmark:interval-join": "python scripts/benchmark_interval_join.py",
+    "start:backend": "powershell ./start-backend.ps1",
+    "start:frontend": "powershell ./start-frontend.ps1"
+  },
+  "keywords": [
+    "cold-chain",
+    "pharmaceutical",
+    "exasol",
+    "temperature-excursion",
+    "interval-join"
+  ],
+  "author": "HandoffGuard Team",
+  "license": "MIT"
+}

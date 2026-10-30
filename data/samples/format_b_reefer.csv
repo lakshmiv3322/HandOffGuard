@@ -1,0 +1,11 @@
+logger_id,reading_time,temperature,battery_pct,timezone
+CS-COLD-002,2026-10-20 11:30:00,4.8,88%,Asia/Kolkata
+CS-COLD-002,2026-10-20 11:35:00,4.7,88%,Asia/Kolkata
+CS-COLD-002,2026-10-20 11:40:00,4.9,87%,Asia/Kolkata
+CS-COLD-002,2026-10-20 11:45:00,5.0,87%,Asia/Kolkata
+CS-COLD-002,2026-10-20 11:50:00,4.6,87%,Asia/Kolkata
+CS-COLD-002,2026-10-20 11:55:00,4.7,86%,Asia/Kolkata
+CS-COLD-002,2026-10-20 12:00:00,4.8,86%,Asia/Kolkata
+CS-COLD-002,2026-10-20 12:05:00,4.9,85%,Asia/Kolkata
+CS-COLD-002,2026-10-20 12:10:00,4.7,85%,Asia/Kolkata
+CS-COLD-002,2026-10-20 12:15:00,4.8,85%,Asia/Kolkata

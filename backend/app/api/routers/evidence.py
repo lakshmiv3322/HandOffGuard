@@ -118,6 +118,8 @@ async def get_evidence_report(
         },
         "ranked_handoffs": evidence_list,
         "naive_baseline_comparison": {
+            "handoff_id": naive_res.naive_handoff_id,
+            "handoff_label": naive_res.naive_handoff_label,
             "naive_handoff_id": naive_res.naive_handoff_id,
             "naive_handoff_label": naive_res.naive_handoff_label,
             "agrees_with_top_ranked": naive_res.agree,

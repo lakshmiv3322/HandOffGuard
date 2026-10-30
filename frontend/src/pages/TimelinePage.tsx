@@ -5,10 +5,12 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
 import { TemperatureChart } from '../components/charts/TemperatureChart';
 import { LoggerCoverage } from '../components/charts/LoggerCoverage';
+import { ExposureBarChart } from '../components/charts/ExposureBarChart';
 import { TimelineHeader } from '../components/timeline/TimelineHeader';
 import { HandoffCard } from '../components/timeline/HandoffCard';
 import { DataQualitySummary } from '../components/timeline/DataQualitySummary';
 import { ClockSkewIndicator } from '../components/timeline/ClockSkewIndicator';
+import { MembershipTable } from '../components/timeline/MembershipTable';
 import { Disclaimer } from '../components/common/Disclaimer';
 
 export function TimelinePage() {
@@ -156,6 +158,9 @@ export function TimelinePage() {
           readings={readings}
           clockSkewCorrections={clock_skew_corrections}
         />
+
+        {/* Thermal Exposure Horizontal Bar Chart */}
+        <ExposureBarChart shipmentId={Number(shipment.shipment_id)} />
       </div>
 
       {/* Custody Handoffs Grid */}
@@ -197,6 +202,9 @@ export function TimelinePage() {
         <DataQualitySummary summary={data_quality_summary} />
         <ClockSkewIndicator corrections={clock_skew_corrections} />
       </div>
+
+      {/* Exasol Interval Join: Reading-to-Handoff Membership */}
+      <MembershipTable shipmentId={Number(shipment.shipment_id)} />
 
       {/* Mandatory scientific limitation disclaimer */}
       <Disclaimer

@@ -1,6 +1,18 @@
 version: "3.9"
 
 services:
+  exasol:
+    image: exasol/docker-db:latest
+    container_name: handoffguard-exasol
+    ports:
+      - "8563:8563"
+    environment:
+      - EXA_USER=sys
+      - EXA_PASSWORD=exasol
+    privileged: true
+    volumes:
+      - exasol-data:/exa/data
+
   backend:
     build:
       context: ./backend
@@ -8,11 +20,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_ENGINE=sqlite
-      - DEV_DATABASE_URL=sqlite:///./handoffguard_dev.db
+      - DATABASE_ENGINE=exasol
+      - EXASOL_HOST=exasol
+      - EXASOL_PORT=8563
+      - EXASOL_USER=sys
+      - EXASOL_PASSWORD=exasol
+      - EXASOL_SCHEMA=HANDOFFGUARD
       - SKEW_TOLERANCE_SECONDS=120
     volumes:
       - ./backend:/app
+    depends_on:
+      - exasol
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
@@ -28,3 +46,6 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+volumes:
+  exasol-data:

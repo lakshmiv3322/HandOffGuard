@@ -164,10 +164,10 @@ export function EvidenceReportPage() {
             <span className="font-semibold">Top Ranked Handoff:</span> {ranked_handoffs[0]?.handoff_label || 'None'} ({ranked_handoffs[0]?.exposure_share_pct}% exposure share)
           </p>
           <p className="text-slate-600">
-            <span className="font-semibold">Naive First-Crossing Baseline:</span> {naive_baseline_comparison.handoff_label}
+            <span className="font-semibold">Naive First-Crossing Baseline:</span> {naive_baseline_comparison.handoff_label || (naive_baseline_comparison as any).naive_handoff_label || 'None'}
           </p>
           <p className="text-slate-700 italic pt-1">
-            {naive_baseline_comparison.explanation}
+            {naive_baseline_comparison.explanation || ''}
           </p>
         </div>
 

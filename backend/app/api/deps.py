@@ -51,17 +51,32 @@ def get_db_backend() -> DatabaseBackend:
                 raise ValueError("POSTGRES_URL environment variable must be set when using postgres")
             _db_backend = DevDatabaseBackend(settings.postgres_url)
         elif engine == "exasol":
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Exasol engine selected but requires pyexasol driver and repository implementation. See docs at /docs/exasol.",
+            from app.infrastructure.db.exasol_db import ExasolDatabaseBackend
+            if not settings.exasol_host:
+                raise ValueError(
+                    "EXASOL_HOST must be set when DATABASE_ENGINE=exasol. "
+                    "Copy .env.example to .env and fill in Exasol credentials."
+                )
+            _db_backend = ExasolDatabaseBackend(
+                host=settings.exasol_host,
+                port=settings.exasol_port,
+                user=settings.exasol_user,
+                password=settings.exasol_password,
+                schema=settings.exasol_schema,
+                encryption=settings.exasol_encryption,
             )
         else:
             raise ValueError(f"Unsupported DATABASE_ENGINE: {engine}")
     return _db_backend
 
 
+def is_exasol() -> bool:
+    """Return True if Exasol backend is active."""
+    return settings.database_engine.lower() == "exasol"
+
+
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Yield an active async database session for the current request."""
+    """Yield an active async database session (SQLite/Postgres only)."""
     backend = get_db_backend()
     if isinstance(backend, DevDatabaseBackend):
         async with backend.get_session() as session:
@@ -73,32 +88,71 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         )
 
 
-# Repositories
+# ------------------------------------------------------------------
+# Repository factories — return correct implementation based on engine
+# ------------------------------------------------------------------
+
+def _exasol_repos():
+    """Lazily import Exasol repos (only when engine=exasol)."""
+    from app.infrastructure.repositories.exasol import (
+        ExasolAttributionRepository,
+        ExasolExcursionRepository,
+        ExasolHandoffRepository,
+        ExasolLoggerRepository,
+        ExasolProductRepository,
+        ExasolReadingRepository,
+        ExasolShipmentRepository,
+    )
+    return (
+        ExasolProductRepository,
+        ExasolShipmentRepository,
+        ExasolHandoffRepository,
+        ExasolLoggerRepository,
+        ExasolReadingRepository,
+        ExasolExcursionRepository,
+        ExasolAttributionRepository,
+    )
+
+
 def get_product_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractProductRepository:
+    if is_exasol():
+        return _exasol_repos()[0]()
     return DevProductRepository(session)
 
 
 def get_shipment_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractShipmentRepository:
+    if is_exasol():
+        return _exasol_repos()[1]()
     return DevShipmentRepository(session)
 
 
 def get_handoff_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractHandoffRepository:
+    if is_exasol():
+        return _exasol_repos()[2]()
     return DevHandoffRepository(session)
 
 
 def get_logger_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractLoggerRepository:
+    if is_exasol():
+        return _exasol_repos()[3]()
     return DevLoggerRepository(session)
 
 
 def get_reading_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractReadingRepository:
+    if is_exasol():
+        return _exasol_repos()[4]()
     return DevReadingRepository(session)
 
 
 def get_excursion_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractExcursionRepository:
+    if is_exasol():
+        return _exasol_repos()[5]()
     return DevExcursionRepository(session)
 
 
 def get_attribution_repo(session: AsyncSession = Depends(get_db_session)) -> AbstractAttributionRepository:
+    if is_exasol():
+        return _exasol_repos()[6]()
     return DevAttributionRepository(session)
 
 

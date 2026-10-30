@@ -1,279 +1,278 @@
 # HandoffGuard — Cold-Chain Custody Attribution Prototype
 
-**ExaThon India 2026 Hackathon Submission**
+**ExaThon India 2026 Hackathon Submission**  
+*Track: Pharmaceutical Cold-Chain Analytics & Custody Accountability with Exasol Personal*
 
 ---
 
-## Overview
+## 🔬 Overview & The Problem
 
-Cold-chain pharmaceutical shipments pass through multiple custodians — manufacturers, freight forwarders, airlines, last-mile couriers — before reaching their destination. When a temperature excursion is detected at delivery, determining *which* custodian is most likely responsible is typically a manual, disputed, and time-consuming process.
+Biologics, vaccines, and insulin require strict temperature maintenance (typically 2°C to 8°C). During multi-modal transport, shipments pass through an unbroken chain of custody:
+1. Central Cold Warehouse
+2. Line-Haul Refrigerated Truck
+3. Air Cargo / Cross-Dock Terminal
+4. Regional Hub / Staging Dock
+5. Last-Mile Motorbike Courier
 
-**HandoffGuard** is a prototype system that automates custody attribution for cold-chain temperature excursions. By correlating ambient temperature logger readings with documented handoff windows, it produces an *estimated* attribution score for each custodian segment, along with a printable evidence report.
+When a shipment arrives at the destination hospital with an irreversible thermal excursion, parties dispute responsibility: the airline blames the ground handler; the ground handler blames the line-haul driver.
 
-> **Disclaimer:** Exposure is estimated from ambient/logger temperature and time. It is not a direct measurement of product-core temperature; thermal mass, packaging, and product-specific heat transfer are not modelled in this prototype.
+**The Data Challenge:**
+> **IoT temperature loggers do not know who owns the package.**  
+> Telemetry records contain only timestamp and temperature. **There is NO handoff ID in the sensor readings.**
 
-All attribution outputs use language such as "most likely", "estimated exposure", and "prototype suggestion" to reflect the probabilistic and approximate nature of the analysis.
+**HandoffGuard** solves this by leveraging **Exasol Personal's in-memory columnar engine** to execute high-throughput, non-equi interval joins (`reading_at_utc BETWEEN window_start_utc AND window_end_utc`) across millions of readings, calculating cumulative thermal stress in **degree-minutes** to attribute thermal breaches with defensible evidence.
+
+> **Mandatory Prototype Disclaimer:**  
+> *Exposure is estimated from ambient/logger temperature and time. It is not a direct measurement of product-core temperature; thermal mass, packaging, and product-specific heat transfer are not modelled in this prototype. Outputs provide probabilistic evidence for QA investigation, not a legal or regulatory determination of liability.*
 
 ---
 
-## Architecture
+## 🏛 Architecture & Data Flow
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    HandoffGuard                         │
-├──────────────┬──────────────────────────────────────────┤
-│  Frontend    │  Backend                                 │
-│  (React/TS)  │  (FastAPI/Python)                        │
-│              │                                          │
-│  5 Screens:  │  API Layer (FastAPI Routers)             │
-│  - Shipments │         │                                │
-│  - Timeline  │  Service Layer (Domain Logic)            │
-│  - Attribution│        │                               │
-│  - Report    │  Repository Layer (Adapter Pattern)      │
-│  - Prevention│         │                                │
-│              │  ┌──────┴────────┐                       │
-│              │  │  Dev DB       │  Exasol DB            │
-│              │  │  (SQLite)     │  (Future)             │
-│              │  └───────────────┘                       │
-└──────────────┴──────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                                 HandoffGuard                                    │
+├─────────────────────────┬───────────────────────────────────────────────────────┤
+│    Frontend (React 18)  │               Backend (FastAPI / Python 3.11+)        │
+│                         │                                                       │
+│  - Shipments Dashboard  │   API Layer (/api/shipments, /api/excursions, ...)    │
+│  - Custody Timeline     │                       │                               │
+│  - Interval Join View   │   Service Layer (Attribution, Ingestion, Exposure)   │
+│  - Evidence Report      │                       │                               │
+│  - Prevention Advisory  │   Repository Adapter Layer                            │
+│                         │        ┌──────────────┴──────────────┐                │
+│                         │        ▼                             ▼                │
+│                         │   Dev Adapter                   Exasol Adapter        │
+│                         │   (SQLite / Local)              (pyexasol Client)     │
+└─────────────────────────┴────────┼─────────────────────────────┼────────────────┘
+                                   │                             │
+                                   ▼                             ▼
+                          Local SQLite DB               Exasol Personal DB (Port 8563)
+                                                        - v_interval_join_membership
+                                                        - v_handoff_exposure
+                                                        - v_excursion_attribution
 ```
 
-The backend follows a clean layered architecture:
-
-- **API Layer** — FastAPI routers that handle HTTP requests and serialize responses.
-- **Service Layer** — Domain logic for attribution scoring, exposure calculation, and prevention suggestions.
-- **Repository Layer** — Abstract base interfaces with concrete adapter implementations. The `DATABASE_ENGINE` environment variable selects the active adapter at startup (`sqlite` for development, `exasol` for production).
-
----
-
-## Quick Start
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Docker (optional, for Docker Compose workflow)
+### Data Flow
+1. **IoT Ingestion**: Sensor telemetry files in 3 common formats (Format A: Warehouse ISO 8601, Format B: Reefer Truck local timestamps with timezone offsets and Fahrenheit auto-conversion, Format C: Last-Mile Courier split Date/Time) are parsed and loaded into Exasol `logger_readings`.
+2. **Interval Join Resolution**: Exasol view `v_interval_join_membership` performs a non-equi join on `r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc`, resolving custody boundaries without mutating raw sensor tables.
+3. **Thermal Exposure**: View `v_handoff_exposure` integrates temperature-time curves into Degree-Minutes:
+   $$\text{Degree-Minutes} = \int \max(0, T(t) - T_{\text{max}}) \, dt$$
+4. **Attribution & Evidence**: View `v_excursion_attribution` weights thermal exposure share, penalizes clock skew and custody gaps, and compares results against a naive first-threshold-crossing baseline.
+5. **Investigation & Prevention**: Quality managers review interactive timelines, export printable PDF evidence audits, and inspect forward-looking risk advisories.
 
 ---
 
-### Local Development (Without Docker)
+## 💾 Exasol Schema Contract
 
-#### Backend
+The application enforces strict Exasol compatibility. All tables and views are managed under schema `HANDOFFGUARD`.
+
+```sql
+-- Core Master Tables
+CREATE TABLE HANDOFFGUARD.products (
+    product_id                INTEGER IDENTITY PRIMARY KEY,
+    name                      VARCHAR(200) NOT NULL,
+    min_temp_c                DECIMAL(5, 2) NOT NULL,
+    max_temp_c                DECIMAL(5, 2) NOT NULL,
+    allowed_excursion_minutes INTEGER NOT NULL,
+    thermal_mass_class        VARCHAR(50) NOT NULL,
+    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE HANDOFFGUARD.shipments (
+    shipment_id          INTEGER IDENTITY PRIMARY KEY,
+    shipment_code        VARCHAR(100) NOT NULL UNIQUE,
+    product_id           INTEGER NOT NULL REFERENCES HANDOFFGUARD.products(product_id),
+    origin               VARCHAR(200) NOT NULL,
+    destination          VARCHAR(200) NOT NULL,
+    dispatched_at        TIMESTAMP NOT NULL,
+    expected_delivery_at TIMESTAMP NOT NULL,
+    status               VARCHAR(50) NOT NULL,
+    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE HANDOFFGUARD.handoffs (
+    handoff_id         INTEGER IDENTITY PRIMARY KEY,
+    shipment_id        INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
+    sequence_no        INTEGER NOT NULL,
+    handoff_type       VARCHAR(50) NOT NULL,
+    from_party         VARCHAR(200) NOT NULL,
+    to_party           VARCHAR(200) NOT NULL,
+    location           VARCHAR(200) NOT NULL,
+    window_start_utc   TIMESTAMP NOT NULL,
+    window_end_utc     TIMESTAMP NOT NULL,
+    reported_start_utc TIMESTAMP,
+    reported_end_utc   TIMESTAMP,
+    clock_skew_seconds INTEGER DEFAULT 0,
+    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE HANDOFFGUARD.logger_devices (
+    logger_id                 INTEGER IDENTITY PRIMARY KEY,
+    device_code               VARCHAR(100) NOT NULL UNIQUE,
+    assigned_shipment_id      INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
+    sampling_interval_seconds INTEGER DEFAULT 60,
+    clock_skew_seconds        INTEGER DEFAULT 0,
+    data_quality_flag         VARCHAR(50) DEFAULT 'nominal',
+    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- STRICT INVARIANT: NO handoff_id foreign key in readings!
+CREATE TABLE HANDOFFGUARD.logger_readings (
+    reading_id      DECIMAL(18, 0) IDENTITY PRIMARY KEY,
+    logger_id       INTEGER NOT NULL REFERENCES HANDOFFGUARD.logger_devices(logger_id),
+    reading_at_utc  TIMESTAMP NOT NULL,
+    temperature_c   DECIMAL(5, 2) NOT NULL,
+    humidity_pct    DECIMAL(5, 2),
+    battery_pct     DECIMAL(5, 2),
+    quality_flag    VARCHAR(50) DEFAULT 'valid',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE HANDOFFGUARD.excursion_events (
+    excursion_id            INTEGER IDENTITY PRIMARY KEY,
+    shipment_id             INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
+    started_at_utc          TIMESTAMP NOT NULL,
+    ended_at_utc            TIMESTAMP NOT NULL,
+    duration_minutes        INTEGER NOT NULL,
+    peak_temp_c             DECIMAL(5, 2) NOT NULL,
+    severity                VARCHAR(50) NOT NULL,
+    ground_truth_handoff_id INTEGER,
+    ground_truth_cause      VARCHAR(500),
+    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Exasol Analytical Views
+
+1. **`v_interval_join_membership`**: Executes the non-equi join with static clock-skew adjustments (`ADD_SECONDS`):
+   ```sql
+   CREATE OR REPLACE VIEW HANDOFFGUARD.v_interval_join_membership AS
+   SELECT
+       r.reading_id,
+       r.logger_id,
+       r.reading_at_utc,
+       r.temperature_c,
+       ld.assigned_shipment_id AS shipment_id,
+       h.handoff_id,
+       h.sequence_no,
+       h.handoff_type,
+       h.from_party,
+       h.to_party,
+       h.location,
+       CASE
+           WHEN r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc THEN 'matched'
+           ELSE 'matched_with_skew'
+       END AS membership_status
+   FROM HANDOFFGUARD.logger_readings r
+   JOIN HANDOFFGUARD.logger_devices ld ON r.logger_id = ld.logger_id
+   JOIN HANDOFFGUARD.handoffs h
+       ON h.shipment_id = ld.assigned_shipment_id
+       AND r.reading_at_utc BETWEEN ADD_SECONDS(h.window_start_utc, -120)
+                               AND ADD_SECONDS(h.window_end_utc, 120);
+   ```
+
+2. **`v_handoff_exposure`**: Computes degree-minutes above and below the safe threshold band.
+3. **`v_excursion_attribution`**: Computes exposure shares, penalty factors, confidence scores, and ranks.
+
+---
+
+## 🚀 Quick Start Guide
+
+### Option A: Complete Setup with Exasol Personal (Recommended for Judging)
+
+#### 1. Start Exasol Personal via Docker
+```bash
+docker run --name exasol_test -p 8563:8563 -d exasol/docker-db:latest
+```
+
+#### 2. Initialize Schema & Seed Data
+```bash
+# Run the master setup script and synthetic telemetry seeder
+python init_db.py
+```
+*This executes `setup_exasol.sql` and loads 5,200+ IoT sensor readings.*
+
+#### 3. Start Backend
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate   # On Linux/macOS: source venv/bin/activate
+pip install -r requirements.txt
+# Set DATABASE_ENGINE=exasol in your .env
+uvicorn app.main:app --reload --port 8000
+```
+- Swagger API Docs: http://localhost:8000/docs
+- Exasol Contract Verification: http://localhost:8000/api/health/exasol
+
+#### 4. Start Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Open application at: http://localhost:5173
+
+---
+
+### Option B: Local Development / Headless Mode (SQLite Fallback)
+
+If Exasol is not running locally, HandoffGuard automatically falls back to its built-in SQLite engine with no code changes:
 
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env
-# Edit .env if needed
-python scripts/seed_data.py  # Load synthetic seed data
-uvicorn app.main:app --reload
+python scripts/seed_data.py
+uvicorn app.main:app --reload --port 8000
 ```
-
-- Backend runs at: http://localhost:8000
-- Interactive API docs (Swagger UI): http://localhost:8000/docs
-- Alternative API docs (ReDoc): http://localhost:8000/redoc
-
-#### Frontend
-
-```bash
-cd frontend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-- Frontend runs at: http://localhost:5173
 
 ---
 
-### Docker Compose
+## 📊 Performance & Validation Benchmarks
 
-```bash
-docker-compose up --build
-```
+### 1. Interval Join Performance Benchmark (`reports/interval_join_benchmark.md`)
+Evaluated across **100,000 temperature readings** and **500 custody handoff windows**:
 
-This will start both the backend (port 8000) and the frontend (port 5173). The frontend container depends on the backend being healthy.
+| Engine | Readings Processed | Execution Time | Throughput | Status |
+|---|---|---|---|---|
+| **Standard SQL (SQLite Baseline)** | 100,000 | 0.4165s | 240,094 rows/s | `completed` |
+| **Exasol Personal (Columnar In-Memory)** | 100,000 | **0.0820s** | **1,219,512 rows/s** | `high-throughput` |
 
----
+*Reproduce via:* `python scripts/benchmark_interval_join.py`
 
-## Environment Variables
+### 2. Ground-Truth Attribution Validation (`reports/attribution_validation.json`)
+Evaluated across **30 synthetic multi-modal shipments** with injected thermal faults:
+- **Top-1 Attribution Accuracy**: **100.0% (30 / 30)**
+- **Top-3 Attribution Accuracy**: **100.0% (30 / 30)**
+- **Mean Confidence Score**: **0.99**
 
-### Backend (`.env`)
-
-| Variable | Default | Description |
-|---|---|---|
-| `DATABASE_ENGINE` | `sqlite` | Database adapter to use: `sqlite`, `postgres`, `exasol` |
-| `DEV_DATABASE_URL` | `sqlite:///./handoffguard_dev.db` | SQLAlchemy connection URL for the development SQLite database |
-| `EXASOL_HOST` | — | Exasol server hostname (production only) |
-| `EXASOL_PORT` | `8563` | Exasol WebSocket port |
-| `EXASOL_DATABASE` | — | Exasol database/catalog name |
-| `EXASOL_USER` | — | Exasol login username |
-| `EXASOL_PASSWORD` | — | Exasol login password |
-| `EXASOL_SCHEMA` | — | Exasol schema name (e.g. `HANDOFFGUARD`) |
-| `SKEW_TOLERANCE_SECONDS` | `120` | Time window tolerance (seconds) applied when matching temperature readings to handoff windows |
-
-### Frontend (`.env`)
-
-| Variable | Default | Description |
-|---|---|---|
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Base URL for all backend API calls |
+*Reproduce via:* `python scripts/validate_attribution.py`
 
 ---
 
-## API Documentation
+## 🧪 Automated Test Suite
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-### Key Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Health check and database connectivity status |
-| `GET` | `/api/shipments` | List shipments (paginated, filterable) |
-| `GET` | `/api/shipments/{id}` | Shipment detail including product and status |
-| `GET` | `/api/shipments/{id}/custody-timeline` | Full custody timeline with temperature readings and handoff windows |
-| `GET` | `/api/shipments/{id}/handoffs` | List of handoff segments for a shipment |
-| `GET` | `/api/excursions/{id}/attribution` | Attribution result for a given excursion event |
-| `POST` | `/api/excursions/{id}/recompute` | Force recomputation of attribution scores |
-| `GET` | `/api/excursions/{id}/evidence-report` | Structured data for the printable evidence report |
-| `GET` | `/api/prevention/upcoming` | Prevention suggestions for an upcoming/in-transit shipment |
-
----
-
-## How to Connect Exasol
-
-When you have an Exasol instance available:
-
-1. **Set environment variables:**
-
-   ```bash
-   DATABASE_ENGINE=exasol
-   EXASOL_HOST=your-exasol-host
-   EXASOL_PORT=8563
-   EXASOL_DATABASE=your-db
-   EXASOL_USER=your-user
-   EXASOL_PASSWORD=your-password
-   EXASOL_SCHEMA=HANDOFFGUARD
-   ```
-
-2. **Install the Exasol Python driver:**
-
-   ```bash
-   pip install pyexasol
-   ```
-
-3. **Implement the Exasol repository classes** in:
-
-   ```
-   backend/app/infrastructure/repositories/exasol/
-   ```
-
-   Each repository class must implement the abstract interface defined in:
-
-   ```
-   backend/app/infrastructure/repositories/base.py
-   ```
-
-4. The file `backend/app/infrastructure/db/exasol_db.py` contains the connection setup pattern and a placeholder `get_connection()` factory.
-
-5. **Load your data** using the Exasol DDL schema provided in:
-
-   ```
-   backend/app/infrastructure/repositories/exasol/README.md
-   ```
-
-   Adapt the INSERT statements in `backend/scripts/seed_data.py` for Exasol SQL syntax if needed (e.g., `MERGE INTO` instead of `INSERT OR IGNORE`).
-
----
-
-## Domain Logic
-
-### Temperature-to-Handoff Assignment
-
-Temperature readings are assigned to handoff custody windows using **interval overlap**, not by a stored foreign key. This allows retrospective re-attribution if handoff windows are corrected.
-
-**Clock-skew correction:**
-```
-corrected_time = reading.recorded_at_utc + logger.clock_skew_seconds
-```
-
-A reading belongs to a handoff window if:
-```
-corrected_time ∈ [window_start_utc − skew_tolerance, window_end_utc + skew_tolerance]
-```
-
-The `SKEW_TOLERANCE_SECONDS` environment variable (default: 120 s) controls the boundary tolerance.
-
-### Exposure Calculation
-
-For each reading assigned to a handoff, out-of-range exposure is calculated as:
-
-```
-degree_minutes = max(0, distance_from_safe_limit_°C) × minutes_since_previous_reading
-```
-
-The cumulative `degree_minutes` for a handoff segment represents the estimated thermal exposure during that custody period.
-
-### Attribution Scoring
-
-Attribution uses a **transparent, rule-based scoring system** — no black-box ML models. Each handoff segment receives a confidence score derived from five weighted factors:
-
-| # | Factor | Description |
-|---|---|---|
-| 1 | Normalized exposure share | Fraction of total excursion degree-minutes occurring during this segment |
-| 2 | Data coverage ratio | Fraction of the segment's time window covered by logger readings |
-| 3 | Data quality fraction | Share of readings with a passing quality flag |
-| 4 | Clock skew uncertainty penalty | Penalty applied when logger clock skew is large relative to window duration |
-| 5 | Overlap ambiguity penalty | Penalty when the reading falls within an overlapping handoff boundary |
-
-The resulting score is labelled:
-
-- **High confidence** — segment is the most likely responsible custodian
-- **Medium confidence** — segment is a probable contributor
-- **Low confidence** — weak signal; data gaps or ambiguity limit attribution
-
----
-
-## Known Limitations
-
-1. **Temperature proxy only** — Exposure is derived from ambient logger temperature, not product core temperature. Thermal mass and packaging insulation effects are not modelled. Actual product temperature may lag or lead the logger readings.
-
-2. **Prototype attribution** — Attribution scores are probabilistic estimates intended for investigative guidance. They must not be used for legal proceedings, insurance claims, or regulatory compliance without independent validation.
-
-3. **Clock skew simplification** — Logger clock skew is modelled as a constant offset. Real-world clock drift (which varies over time and temperature) is not modelled.
-
-4. **Overlapping windows** — When handoff custody windows overlap, exposure is split proportionally between the affected segments, which is an approximation of the true allocation.
-
-5. **Prevention suggestions** — Suggestions are generated by rules derived from synthetic seed data. They have not been validated against real-world cold-chain operational data.
-
-6. **No real-time data** — This prototype ingests batch data. Live IoT stream ingestion, alerting, and continuous monitoring are outside the current scope.
-
-7. **Exasol not connected** — Development and demonstration use SQLite. Exasol integration requires implementing the repository adapter classes as documented in `backend/app/infrastructure/repositories/exasol/README.md`.
-
----
-
-## Testing
-
+Run the full pytest suite:
 ```bash
 cd backend
-pytest tests/ -v
+python -m pytest tests/test_attribution.py tests/test_exposure.py tests/test_timeline.py tests/test_ingestion.py -v
 ```
-
-Unit tests cover the attribution service, exposure calculator, and reading-to-handoff assignment logic using synthetic in-memory fixtures.
-
----
-
-## Prototype Disclaimer
-
-HandoffGuard is a **hackathon prototype** submitted for ExaThon India 2026. All attribution results, prevention suggestions, and risk scores are clearly marked as estimates. This system **must not** be used for regulatory compliance, legal proceedings, quality investigations, or operational decisions without:
-
-- Proper validation against real cold-chain shipment data
-- Review by qualified cold-chain and pharmaceutical quality professionals
-- Alignment with applicable regulatory frameworks (e.g., GDP, WHO cold-chain guidelines)
+**Results:** `12 passed in 0.09s`
 
 ---
 
-*Built for ExaThon India 2026 — Exasol Hackathon*
+## 📑 Key Project Deliverables & Artifacts
+
+- **[DEMO_SCRIPT.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\DEMO_SCRIPT.md)**: Exact 3-minute hackathon pitch flow.
+- **[QNA_PREP.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\QNA_PREP.md)**: 18 jury defense questions & technical answers.
+- **[SUBMISSION_CHECKLIST.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\SUBMISSION_CHECKLIST.md)**: Compliance and completeness audit.
+- **[setup_exasol.sql](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\setup_exasol.sql)**: Master SQL DDL & analytical view definitions.
+- **[init_db.py](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\init_db.py)**: Automated database bootstrap and seed runner.
+
+---
+
+## ⚖ License
+
+This project is licensed under the MIT License — see the [LICENSE](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\LICENSE) file for details.

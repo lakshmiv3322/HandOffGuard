@@ -36,11 +36,15 @@ class Settings(BaseSettings):
     )
 
     # Exasol credentials (only used when database_engine == "exasol")
-    exasol_host: str = Field(default="", description="Exasol host")
+    exasol_host: str = Field(default="localhost", description="Exasol host")
     exasol_port: int = Field(default=8563, description="Exasol port")
     exasol_user: str = Field(default="sys", description="Exasol user")
-    exasol_password: str = Field(default="", description="Exasol password")
+    exasol_password: str = Field(default="exasol", description="Exasol password")
     exasol_schema: str = Field(default="HANDOFFGUARD", description="Exasol schema")
+    exasol_encryption: bool = Field(
+        default=False,
+        description="Enable TLS encryption for Exasol connection"
+    )
 
     # Domain configuration
     skew_tolerance_seconds: int = Field(

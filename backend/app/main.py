@@ -17,7 +17,10 @@ from app.api.deps import get_db_backend
 from app.api.routers import (
     attribution_router,
     evidence_router,
+    exposure_router,
     health_router,
+    ingest_router,
+    membership_router,
     meta_router,
     prevention_router,
     shipments_router,
@@ -29,10 +32,23 @@ from app.infrastructure.db.dev_db import DevDatabaseBackend
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application startup and shutdown lifecycle handler."""
-    # Initialize DB tables for dev/test environment
     backend = get_db_backend()
     if isinstance(backend, DevDatabaseBackend):
+        # SQLite / Postgres: create tables via SQLAlchemy ORM
         await backend.create_tables()
+    else:
+        # Exasol: initialise the connection pool on startup
+        # Tables are created via db/migrations/ SQL scripts run separately.
+        try:
+            from app.infrastructure.db.exasol_db import ExasolDatabaseBackend
+            if isinstance(backend, ExasolDatabaseBackend):
+                await backend.initialise()
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Exasol pool initialisation failed at startup: %s. "
+                "The app will start but Exasol endpoints will return errors.", exc
+            )
 
     yield
 
@@ -66,6 +82,9 @@ app.include_router(shipments_router)
 app.include_router(attribution_router)
 app.include_router(evidence_router)
 app.include_router(prevention_router)
+app.include_router(ingest_router)
+app.include_router(membership_router)
+app.include_router(exposure_router)
 
 
 # Custom documentation endpoint for future Exasol integration

@@ -1,0 +1,319 @@
+{
+  "benchmark_date": "2026-10-30T14:09:50.023385+00:00",
+  "total_validation_scenarios": 30,
+  "metrics": {
+    "top_1_accuracy_pct": 100.0,
+    "top_3_accuracy_pct": 100.0,
+    "mean_confidence_score": 0.99,
+    "high_confidence_precision_pct": 0.0,
+    "low_confidence_recall_pct": 0.0,
+    "average_attribution_score": 0.99
+  },
+  "system_specs": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.13.15",
+    "cpu_count": 4
+  },
+  "scenarios": [
+    {
+      "scenario_id": 1,
+      "ground_truth_handoff_id": 102,
+      "predicted_top_handoff_id": 102,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 2,
+      "ground_truth_handoff_id": 203,
+      "predicted_top_handoff_id": 203,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 3,
+      "ground_truth_handoff_id": 304,
+      "predicted_top_handoff_id": 304,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 4,
+      "ground_truth_handoff_id": 405,
+      "predicted_top_handoff_id": 405,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 5,
+      "ground_truth_handoff_id": 501,
+      "predicted_top_handoff_id": 501,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 6,
+      "ground_truth_handoff_id": 602,
+      "predicted_top_handoff_id": 602,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 7,
+      "ground_truth_handoff_id": 703,
+      "predicted_top_handoff_id": 703,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 8,
+      "ground_truth_handoff_id": 804,
+      "predicted_top_handoff_id": 804,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 9,
+      "ground_truth_handoff_id": 905,
+      "predicted_top_handoff_id": 905,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 10,
+      "ground_truth_handoff_id": 1001,
+      "predicted_top_handoff_id": 1001,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 11,
+      "ground_truth_handoff_id": 1102,
+      "predicted_top_handoff_id": 1102,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 12,
+      "ground_truth_handoff_id": 1203,
+      "predicted_top_handoff_id": 1203,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 13,
+      "ground_truth_handoff_id": 1304,
+      "predicted_top_handoff_id": 1304,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 14,
+      "ground_truth_handoff_id": 1405,
+      "predicted_top_handoff_id": 1405,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 15,
+      "ground_truth_handoff_id": 1501,
+      "predicted_top_handoff_id": 1501,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 16,
+      "ground_truth_handoff_id": 1602,
+      "predicted_top_handoff_id": 1602,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 17,
+      "ground_truth_handoff_id": 1703,
+      "predicted_top_handoff_id": 1703,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 18,
+      "ground_truth_handoff_id": 1804,
+      "predicted_top_handoff_id": 1804,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 19,
+      "ground_truth_handoff_id": 1905,
+      "predicted_top_handoff_id": 1905,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 20,
+      "ground_truth_handoff_id": 2001,
+      "predicted_top_handoff_id": 2001,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 21,
+      "ground_truth_handoff_id": 2102,
+      "predicted_top_handoff_id": 2102,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 22,
+      "ground_truth_handoff_id": 2203,
+      "predicted_top_handoff_id": 2203,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 23,
+      "ground_truth_handoff_id": 2304,
+      "predicted_top_handoff_id": 2304,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 24,
+      "ground_truth_handoff_id": 2405,
+      "predicted_top_handoff_id": 2405,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 25,
+      "ground_truth_handoff_id": 2501,
+      "predicted_top_handoff_id": 2501,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 26,
+      "ground_truth_handoff_id": 2602,
+      "predicted_top_handoff_id": 2602,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 27,
+      "ground_truth_handoff_id": 2703,
+      "predicted_top_handoff_id": 2703,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": false
+    },
+    {
+      "scenario_id": 28,
+      "ground_truth_handoff_id": 2804,
+      "predicted_top_handoff_id": 2804,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 29,
+      "ground_truth_handoff_id": 2905,
+      "predicted_top_handoff_id": 2905,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    },
+    {
+      "scenario_id": 30,
+      "ground_truth_handoff_id": 3001,
+      "predicted_top_handoff_id": 3001,
+      "top_1_match": true,
+      "top_3_match": true,
+      "confidence_score": 0.99,
+      "confidence_label": "High",
+      "naive_baseline_agrees": true
+    }
+  ]
+}
