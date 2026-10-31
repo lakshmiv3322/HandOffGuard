@@ -4,7 +4,7 @@
 > Target: *Handoff with the largest supported out-of-range exposure within an excursion window.*  
 > Decision support tool only — product disposition remains with the quality team.
 
-Generated: 2026-10-31 07:15 UTC
+Generated: 2026-10-31 08:37 UTC
 
 ---
 

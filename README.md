@@ -105,13 +105,17 @@ python scripts/seed_demo_scenarios.py
 
 ---
 
-### Option 1: Docker Compose (All-in-One)
+### Option 1: Docker Compose (Automated Stack)
 
 If Docker and Docker Compose are installed:
 ```bash
 git clone https://github.com/lakshmiv3322/HandOffGuard.git
 cd HandOffGuard
 docker compose up -d
+```
+*(Wait ~30–45 seconds for Exasol's internal database initialization, then seed the demo data):*
+```bash
+python scripts/seed_demo_scenarios.py
 ```
 - Open application at: **http://localhost:5173**
 - Backend API docs: **http://localhost:8000/docs**
@@ -128,6 +132,7 @@ cd HandOffGuard
 
 #### 2. Start Exasol Personal via Docker
 ```bash
+# Standard Docker run (on Apple Silicon M1/M2/M3 Macs, add --platform linux/amd64):
 docker run --name exasol_test -p 8563:8563 -d exasol/docker-db:latest
 ```
 *(Wait ~30–45 seconds for Exasol's internal database instance to initialize).*

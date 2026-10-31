@@ -4,7 +4,7 @@
 > **Result**: Preserves the measured empirical finding that **in-process pandas was faster than networked Exasol on this small fixture** (median 11.6 ms vs 108.3 ms) due to loopback network round-trip and query dispatch overhead dominating small datasets.  
 > **Large-Scale Testing Status**: **NOT COMPLETED** (requires distributed multi-node infrastructure beyond single-container developer laptop).
 
-Generated: 2026-10-31 07:18 UTC
+Generated: 2026-10-31 08:37 UTC
 
 ---
 
@@ -42,8 +42,8 @@ Both implementations agree within 0.01 °C·min tolerance: **PASS**
 
 | Engine | Execution Mode | Median (ms) | Min (ms) | Max (ms) | Relative Speed |
 |---|---|---|---|---|---|
-| **pandas** | In-process Python / NumPy | **20.9 ms** | 15.8 ms | 25.5 ms | **Baseline (1.0x)** |
-| **Exasol** | Networked query + fetch over loopback | **108.7 ms** | 84.1 ms | 184.9 ms | ~5.2x slower |
+| **pandas** | In-process Python / NumPy | **24.6 ms** | 12.8 ms | 28.1 ms | **Baseline (1.0x)** |
+| **Exasol** | Networked query + fetch over loopback | **151.9 ms** | 121.5 ms | 288.9 ms | ~6.2x slower |
 
 ### Analysis of Small-Fixture Timing
 - At small data volumes (301 rows), Exasol timing is dominated by network protocol handshakes, query compilation/optimization, and cursor fetching over loopback TCP (~80–120 ms).
