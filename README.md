@@ -3,6 +3,12 @@
 **Pharmaceutical Cold-Chain Analytics & Custody Attribution**  
 *Prototype Decision Support Engine Powered by Exasol In-Memory Columnar Database*
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Deployment Guide](https://img.shields.io/badge/Run%20Guide-DEPLOYMENT.md-green.svg)](DEPLOYMENT.md)
+[![Release Audit](https://img.shields.io/badge/Audit-36%2F36%20Passed-emerald.svg)](RELEASE_AUDIT.md)
+
+**Quick Links**: [🚀 Run Guide & Deployment Instructions](DEPLOYMENT.md) | [📋 Submission Checklist](SUBMISSION_CHECKLIST.md) | [📊 100k Benchmark](reports/interval_join_benchmark.md) | [🎙️ 3-Min Demo Script](DEMO_SCRIPT.md)
+
 ---
 
 ## 🔬 Overview & The Problem
