@@ -46,6 +46,18 @@ export function ExasolQueryInsights({
 
   if (!data) return null;
 
+  const raw = data as any;
+  const queryName = data.query_name ?? raw.query_name ?? 'Interval Join';
+  const sqlView = data.sql_view ?? raw.sql_view ?? 'HANDOFFGUARD.v_reading_handoff_membership';
+  const rowsExamined = data.rows_examined ?? raw.execution_metrics?.rows_examined ?? 0;
+  const rowsReturned = data.rows_returned ?? raw.execution_metrics?.rows_returned ?? 0;
+  const executionTimeMs = data.execution_time_ms ?? raw.execution_metrics?.execution_time_ms ?? 0;
+  const connectionStatus = data.exasol_connection_status ?? raw.execution_metrics?.engine ?? 'connected';
+  const latestTs = data.latest_reading_timestamp ?? raw.execution_metrics?.latest_reading_at_utc ?? null;
+  const sqlFilePath = data.sql_file_path ?? raw.sql_file_path ?? 'setup_exasol.sql';
+  const sqlQuery = data.sql_query ?? raw.sql_source ?? '';
+  const measuredAt = data.measured_at ?? raw.execution_metrics?.measured_at_utc ?? '';
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3 text-xs">
       {/* Top Header */}
@@ -59,12 +71,12 @@ export function ExasolQueryInsights({
           </h3>
           <span
             className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-              data.exasol_connection_status === 'connected'
+              connectionStatus === 'connected'
                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                 : 'bg-slate-100 text-slate-700 border border-slate-300'
             }`}
           >
-            {data.exasol_connection_status === 'connected'
+            {connectionStatus === 'connected'
               ? '● Exasol Personal Live'
               : '● Dev SQL Engine (Measured)'}
           </span>
@@ -85,36 +97,36 @@ export function ExasolQueryInsights({
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
           <p className="text-[10px] uppercase font-bold text-slate-400">Query Name</p>
-          <p className="text-xs font-bold text-slate-800 truncate mt-0.5" title={data.query_name}>
-            {data.query_name}
+          <p className="text-xs font-bold text-slate-800 truncate mt-0.5" title={queryName}>
+            {queryName}
           </p>
         </div>
 
         <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
           <p className="text-[10px] uppercase font-bold text-slate-400">SQL View</p>
-          <p className="text-xs font-mono font-bold text-blue-700 truncate mt-0.5" title={data.sql_view}>
-            {data.sql_view}
+          <p className="text-xs font-mono font-bold text-blue-700 truncate mt-0.5" title={sqlView}>
+            {sqlView}
           </p>
         </div>
 
         <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
           <p className="text-[10px] uppercase font-bold text-slate-400">Rows Examined</p>
           <p className="text-sm font-black font-mono text-slate-900 mt-0.5">
-            {data.rows_examined.toLocaleString()}
+            {Number(rowsExamined || 0).toLocaleString()}
           </p>
         </div>
 
         <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
           <p className="text-[10px] uppercase font-bold text-slate-400">Rows Returned</p>
           <p className="text-sm font-black font-mono text-slate-900 mt-0.5">
-            {data.rows_returned.toLocaleString()}
+            {Number(rowsReturned || 0).toLocaleString()}
           </p>
         </div>
 
         <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
           <p className="text-[10px] uppercase font-bold text-slate-400">Execution Time</p>
           <p className="text-sm font-black font-mono text-emerald-600 mt-0.5">
-            {data.execution_time_ms.toFixed(2)} ms
+            {Number(executionTimeMs || 0).toFixed(2)} ms
           </p>
         </div>
       </div>
@@ -122,18 +134,18 @@ export function ExasolQueryInsights({
       {/* Footer Info: Latest timestamp & SQL file link */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-500 pt-1">
         <div className="flex items-center gap-3">
-          {data.latest_reading_timestamp && (
+          {latestTs && (
             <span>
               Latest Reading:{' '}
               <span className="font-mono text-slate-700">
-                {safeFormat(data.latest_reading_timestamp, 'yyyy-MM-dd HH:mm:ss')} UTC
+                {safeFormat(latestTs, 'yyyy-MM-dd HH:mm:ss')} UTC
               </span>
             </span>
           )}
           <span>
             Schema Source:{' '}
             <code className="text-[10px] bg-slate-100 px-1 py-0.5 rounded text-slate-700">
-              {data.sql_file_path}
+              {sqlFilePath}
             </code>
           </span>
         </div>
@@ -151,9 +163,9 @@ export function ExasolQueryInsights({
         <div className="mt-2 p-3 bg-slate-900 rounded-lg text-slate-200 font-mono text-[11px] overflow-x-auto border border-slate-800">
           <div className="flex justify-between text-slate-400 text-[10px] mb-1.5 border-b border-slate-800 pb-1">
             <span>EXASOL SQL SPECIFICATION</span>
-            <span>Measured at {safeFormat(data.measured_at, 'HH:mm:ss')} UTC</span>
+            <span>Measured at {safeFormat(measuredAt, 'HH:mm:ss')} UTC</span>
           </div>
-          <pre>{data.sql_query}</pre>
+          <pre>{sqlQuery}</pre>
         </div>
       )}
     </div>

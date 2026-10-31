@@ -97,7 +97,7 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
         <div className="p-3 bg-white rounded-lg border border-slate-200">
           <p className="text-[10px] uppercase font-bold text-slate-400">Supported Overlap</p>
           <p className="text-sm font-black text-slate-800 font-mono mt-1">
-            {(handoff.supported_observation_minutes ?? handoff.duration_outside_safe_range_minutes).toFixed(0)} min
+            {Number(handoff.supported_observation_minutes ?? handoff.duration_outside_safe_range_minutes ?? 0).toFixed(0)} min
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5">
             Supported telemetry observation

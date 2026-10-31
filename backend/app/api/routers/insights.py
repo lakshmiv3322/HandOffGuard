@@ -182,10 +182,19 @@ async def get_query_insights(
 
     return {
         "query_key": q_key,
+        "query_identifier": q_key,
         "query_name": q_meta["name"],
         "sql_view": q_meta["sql_view"],
         "sql_file_path": q_meta["sql_file_path"],
         "sql_source": sql_text,
+        "sql_query": sql_text,
+        "rows_examined": rows_examined,
+        "rows_returned": rows_returned,
+        "execution_time_ms": round(elapsed_ms, 2),
+        "latest_reading_timestamp": latest_ts,
+        "exasol_connection_status": exasol_status,
+        "measured_at": datetime.now(timezone.utc).isoformat(),
+        "disclaimer": "Measured directly on the running backend. No simulated or inflated figures.",
         "execution_metrics": {
             "execution_time_ms": round(elapsed_ms, 2),
             "rows_examined": rows_examined,

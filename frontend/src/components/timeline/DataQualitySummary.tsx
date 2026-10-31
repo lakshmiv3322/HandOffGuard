@@ -5,9 +5,14 @@ interface DataQualitySummaryProps {
 }
 
 export function DataQualitySummary({ summary }: DataQualitySummaryProps) {
+  const totalReadings = summary?.total_readings ?? 0;
+  const goodReadings = summary?.good_readings ?? 0;
+  const missingGaps = summary?.missing_gaps ?? 0;
+  const loggersWithSkew = summary?.loggers_with_skew ?? 0;
+
   const goodPct =
-    summary.total_readings > 0
-      ? Math.round((summary.good_readings / summary.total_readings) * 100)
+    totalReadings > 0
+      ? Math.round((goodReadings / totalReadings) * 100)
       : 100;
 
   return (
@@ -21,7 +26,7 @@ export function DataQualitySummary({ summary }: DataQualitySummaryProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
         <div className="rounded-md bg-slate-50 p-2.5">
           <p className="text-xs text-slate-500">Total Observations</p>
-          <p className="text-lg font-bold text-slate-800">{summary.total_readings.toLocaleString()}</p>
+          <p className="text-lg font-bold text-slate-800">{totalReadings.toLocaleString()}</p>
         </div>
         <div className="rounded-md bg-emerald-50 p-2.5">
           <p className="text-xs text-emerald-700">Valid Readings</p>
@@ -29,11 +34,11 @@ export function DataQualitySummary({ summary }: DataQualitySummaryProps) {
         </div>
         <div className="rounded-md bg-amber-50 p-2.5">
           <p className="text-xs text-amber-700">Transmission Gaps</p>
-          <p className="text-lg font-bold text-amber-700">{summary.missing_gaps}</p>
+          <p className="text-lg font-bold text-amber-700">{missingGaps}</p>
         </div>
         <div className="rounded-md bg-blue-50 p-2.5">
           <p className="text-xs text-blue-700">Skew Adjustments</p>
-          <p className="text-lg font-bold text-blue-700">{summary.loggers_with_skew}</p>
+          <p className="text-lg font-bold text-blue-700">{loggersWithSkew}</p>
         </div>
       </div>
     </div>

@@ -94,19 +94,19 @@ export function BenchmarkPage() {
             <div className="p-2.5 bg-slate-50 rounded-lg">
               <p className="text-[10px] uppercase font-bold text-slate-400">Telemetry Rows</p>
               <p className="text-base font-black text-slate-900 font-mono mt-0.5">
-                {scale.readings_row_count.toLocaleString()}
+                {Number(scale?.readings_row_count ?? 0).toLocaleString()}
               </p>
             </div>
             <div className="p-2.5 bg-slate-50 rounded-lg">
               <p className="text-[10px] uppercase font-bold text-slate-400">Custody Windows</p>
               <p className="text-base font-black text-slate-900 font-mono mt-0.5">
-                {scale.handoff_windows_count.toLocaleString()}
+                {Number(scale?.handoff_windows_count ?? 0).toLocaleString()}
               </p>
             </div>
             <div className="p-2.5 bg-slate-50 rounded-lg">
               <p className="text-[10px] uppercase font-bold text-slate-400">Shipments</p>
               <p className="text-base font-black text-slate-900 font-mono mt-0.5">
-                {scale.shipments_count}
+                {scale?.shipments_count ?? 0}
               </p>
             </div>
           </div>
@@ -167,7 +167,7 @@ WHERE r.reading_at_utc BETWEEN ADD_SECONDS(h.window_start_utc, -120)
             Multi-Engine Execution Results
           </h2>
           <span className="text-xs text-slate-500">
-            Matched Rows: <span className="font-bold text-slate-800">{correctness_check.sqlite_matched_rows.toLocaleString()}</span> (Tolerance ±{correctness_check.tolerance_pct}%)
+            Matched Rows: <span className="font-bold text-slate-800">{Number(correctness_check?.sqlite_matched_rows ?? 0).toLocaleString()}</span> (Tolerance ±{correctness_check?.tolerance_pct ?? 0}%)
           </span>
         </div>
 
@@ -188,7 +188,7 @@ WHERE r.reading_at_utc BETWEEN ADD_SECONDS(h.window_start_utc, -120)
                   <p className="font-bold text-slate-900">{eng.engine}</p>
                 </td>
                 <td className="p-3 text-right font-mono">
-                  {scale.readings_row_count.toLocaleString()}
+                  {Number(scale?.readings_row_count ?? 0).toLocaleString()}
                 </td>
                 <td className="p-3 text-right font-mono font-bold">
                   {eng.execution_time_seconds != null ? `${eng.execution_time_seconds}s` : 'N/A'}

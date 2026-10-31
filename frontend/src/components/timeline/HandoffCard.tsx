@@ -106,7 +106,8 @@ export function HandoffCard({
           {safeFormat(handoff.window_end_utc, 'HH:mm')} UTC
         </span>
         <span>
-          <span className="font-medium">Dwell:</span> {handoff.dwell_minutes.toFixed(0)} min
+          <span className="font-medium">Dwell:</span>{' '}
+          {handoff.dwell_minutes != null ? `${Number(handoff.dwell_minutes).toFixed(0)} min` : '—'}
         </span>
         {handoff.clock_skew_seconds !== 0 && (
           <span className="text-orange-600 font-medium">

@@ -127,7 +127,7 @@ export const ExposureBarChart: React.FC<Props> = ({ shipmentId }) => {
         <div className="text-right">
           <div className="text-xs text-slate-500 font-medium">Total Shipment Exposure</div>
           <div className="text-lg font-black text-rose-600">
-            {data.total_shipment_degree_minutes.toFixed(1)}{' '}
+            {Number(data.total_shipment_degree_minutes ?? 0).toFixed(1)}{' '}
             <span className="text-xs font-semibold text-slate-600">°C·min</span>
           </div>
         </div>
