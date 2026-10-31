@@ -1,52 +1,66 @@
 {
   "_note": "Synthetic evaluation ground truth. NEVER expose to production attribution queries. Used only by run_evaluation.py to score algorithm correctness against held-out fixtures.",
-  "_label": "Synthetic evaluation — not field validation.",
+  "_label": "Synthetic unit evaluation — not real-world field validation.",
   "cases": [
     {
       "case_id": "EVAL-01-SINGLE-HANDOFF",
-      "description": "Clear single-handoff exposure. All readings during excursion fall in H2. No other handoff overlaps.",
+      "fixture_name": "Clear Single-Handoff Exposure",
+      "category": "UNIQUE_WINNER",
+      "description": "All out-of-range readings fall in H2. No other handoff has out-of-range exposure.",
       "expected_primary_handoff": "EH2",
       "expected_evidence_status": "Unvalidated prototype ranking",
       "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
-      "naive_baseline_first_oor_handoff": "EH2",
-      "naive_matches_primary": true
+      "naive_baseline_prediction": "EH2",
+      "naive_expected_matches_target": true,
+      "scoring_note": "Both primary and naive correctly select EH2 because only one handoff has readings."
     },
     {
       "case_id": "EVAL-02-SPANNING",
-      "description": "Excursion spans two handoffs. H2 holds 75% of out-of-range exposure, H3 holds 25%. Primary target should select H2.",
+      "fixture_name": "Exposure Spanning Multiple Handoffs",
+      "category": "UNIQUE_WINNER",
+      "description": "Excursion spans two handoffs. H2 holds 75% (120 DM) of out-of-range exposure, H3 holds 25% (40 DM). Primary target should select H2.",
       "expected_primary_handoff": "FH2",
       "expected_evidence_status": "Unvalidated prototype ranking",
       "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
-      "naive_baseline_first_oor_handoff": "FH2",
-      "naive_matches_primary": true
+      "naive_baseline_prediction": "FH1",
+      "naive_expected_matches_target": false,
+      "scoring_note": "Naive picks FH1 due to boundary-inclusive match at 10:00:00, missing cumulative exposure entirely."
     },
     {
       "case_id": "EVAL-03-TIED",
-      "description": "Two handoffs have exactly equal supported out-of-range exposure. Attribution rank 1 is shared — no unique winner.",
+      "fixture_name": "Tied Exposure — No Unique Winner",
+      "category": "TIE_HANDLING",
+      "description": "Two handoffs (GH1 and GH2) have exactly equal supported out-of-range exposure (120 DM each). Attribution rank 1 is shared — no unique winner.",
       "expected_primary_handoff": null,
       "expected_evidence_status": "Unvalidated prototype ranking",
       "expected_outcome": "TIED_NO_UNIQUE_WINNER",
-      "naive_baseline_first_oor_handoff": "GH1",
-      "naive_matches_primary": null
+      "naive_baseline_prediction": "GH1",
+      "naive_expected_matches_target": false,
+      "scoring_note": "Primary detects tie and refuses to declare unique winner. Naive arbitrarily crowns GH1 based on first reading."
     },
     {
       "case_id": "EVAL-04-CLOCK-OFFSET",
-      "description": "Logger has +300s clock skew. Without correction, readings land in wrong handoff. With correction, H2 is correctly identified.",
-      "expected_primary_handoff": "KH2",
+      "fixture_name": "Clock Offset (+300s Skew Correction)",
+      "category": "UNIQUE_WINNER",
+      "description": "Logger has +300s clock skew. Breach occurs at 09:56-09:58 UTC (in KH1). Logger clock reports 10:01-10:03 (looks like KH2). Skew correction correctly attributes to KH1.",
+      "expected_primary_handoff": "KH1",
       "expected_evidence_status": "Unvalidated prototype ranking",
       "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
-      "naive_baseline_first_oor_handoff": "KH1",
-      "naive_matches_primary": false,
-      "naive_note": "Naive baseline uses uncorrected timestamps and lands in wrong handoff"
+      "naive_baseline_prediction": "KH2",
+      "naive_expected_matches_target": false,
+      "scoring_note": "Primary corrects skew (-300s) and identifies KH1. Naive uses raw timestamp 10:01 and erroneously blames KH2."
     },
     {
       "case_id": "EVAL-05-MISSING-READINGS",
-      "description": "Only two readings >600s apart. All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA.",
+      "fixture_name": "Missing Readings — Insufficient Data Abstention",
+      "category": "DATA_ABSTENTION",
+      "description": "Only two readings 90 minutes apart (>600s threshold). All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA.",
       "expected_primary_handoff": null,
       "expected_evidence_status": "INCONCLUSIVE_INSUFFICIENT_DATA",
       "expected_outcome": "INCONCLUSIVE",
-      "naive_baseline_first_oor_handoff": "MH1",
-      "naive_matches_primary": null
+      "naive_baseline_prediction": "MH1",
+      "naive_expected_matches_target": false,
+      "scoring_note": "Primary abstains with INCONCLUSIVE_INSUFFICIENT_DATA. Naive blindly outputs MH1 without checking data sufficiency."
     }
   ]
 }

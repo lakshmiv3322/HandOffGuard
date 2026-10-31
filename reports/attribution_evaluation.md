@@ -1,157 +1,119 @@
-# HandoffGuard — Attribution Evaluation Report
+# HandoffGuard — Synthetic Attribution Evaluation Report
 
-> **Synthetic evaluation — not field validation.**  
-> Primary target: *handoff with the largest supported out-of-range exposure within an excursion window.*  
-> This is evidence-aid ranking for quality-team investigation support only — not root-cause identification.
+> **Notice: Synthetic unit evaluation — not real-world field validation.**  
+> Target: *Handoff with the largest supported out-of-range exposure within an excursion window.*  
+> Decision support tool only — product disposition remains with the quality team.
 
-Generated: 2026-10-31 05:51 UTC
-
----
-
-## Summary
-
-| Metric | Value |
-|---|---|
-| Total cases | 5 |
-| Primary algorithm correct | 5 / 5 |
-| Naive baseline correct | 3 / 5 |
-| Primary accuracy | 100.0% |
-| Naive accuracy | 60.0% |
+Generated: 2026-10-31 06:56 UTC
 
 ---
 
-## Case-by-Case Results
+## Evaluation Metrics Breakdown
 
-### ✅ EVAL-01-SINGLE-HANDOFF — Clear Single-Handoff Exposure
+To avoid misleading blanket accuracy claims, performance is separated across test categories:
 
-_Clear single-handoff exposure. All readings during excursion fall in H2. No other handoff overlaps._
+| Evaluation Dimension | Primary Algorithm | Naive Baseline | Scope / Description |
+|---|---|---|---|
+| **Unique-Winner Accuracy** | **100.0%** (3/3) | 33.3% (1/3) | Cases with a single dominant responsible custody segment (EVAL-01, 02, 04) |
+| **Tie Handling** | **100.0%** (1/1) | 0.0% (0/1) | Refusal to crown an arbitrary winner when exposure is exactly equal (EVAL-03) |
+| **Insufficient-Data Abstention** | **100.0%** (1/1) | 0.0% (0/1) | Emitting INCONCLUSIVE when gaps exceed 600s rather than guessing (EVAL-05) |
+| **Decision Coverage** | **100.0%** (5/5) | 100.0% | Taking appropriate action (attributing when evidence suffices, abstaining when not) |
+| **Overall Fixture Outcomes** | **100.0%** (5/5) | 20.0% (1/5) | All 5 synthetic edge-case fixtures |
 
-| Field | Value |
-|---|---|
-| Excursion | `EXC-E01` |
-| Expected primary handoff | `EH2` |
-| Actual primary handoff | `EH2` |
-| Top exposure (°C·min) | 90.0 |
-| Evidence status | `Unvalidated prototype ranking` |
-| Expected outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Actual outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Primary correct | Yes |
-| Naive baseline handoff | `EH2` |
-| Naive correct | Yes |
+> *Note on Naive Baseline:* Naive baseline assigns custody based solely on the handoff containing the first observed out-of-range reading using uncorrected timestamps. It succeeded only on EVAL-01 (where there was only one carrier) and failed on spanning exposure (EVAL-02), tie detection (EVAL-03), clock offset (EVAL-04), and insufficient data (EVAL-05).
 
-**Attribution rows returned by V_EXCURSION_ATTRIBUTION:**
+---
 
-| Handoff | Rank | Obs Min | DM (°C·min) | Status |
+## Reconciled Case-by-Case Results
+
+| Case ID | Fixture Objective | Expected Target | Primary Actual | Primary Scoring | Naive Baseline | Naive Scoring | Why Naive Succeeded / Failed |
+|---|---|---|---|---|---|---|---|
+| **EVAL-01-SINGLE-HANDOFF** | Clear Single-Handoff Exposure | `EH2` | `EH2` | ✅ PASS | `EH2` | ✅ PASS | Both primary and naive correctly select EH2 because only one handoff has readings. |
+| **EVAL-02-SPANNING** | Exposure Spanning Multiple Handoffs | `FH2` | `FH2` | ✅ PASS | `FH1` | ❌ FAIL | Naive picks FH1 due to boundary-inclusive match at 10:00:00, missing cumulative exposure entirely. |
+| **EVAL-03-TIED** | Tied Exposure — No Unique Winner | _None (Abstain)_ | _None (Abstained)_ | ✅ PASS | `GH1` | ❌ FAIL | Primary detects tie and refuses to declare unique winner. Naive arbitrarily crowns GH1 based on first reading. |
+| **EVAL-04-CLOCK-OFFSET** | Clock Offset (+300s Skew Correction) | `KH1` | `KH1` | ✅ PASS | `KH2` | ❌ FAIL | Primary corrects skew (-300s) and identifies KH1. Naive uses raw timestamp 10:01 and erroneously blames KH2. |
+| **EVAL-05-MISSING-READINGS** | Missing Readings — Insufficient Data Abstention | _None (Abstain)_ | _None (Abstained)_ | ✅ PASS | `MH1` | ❌ FAIL | Primary abstains with INCONCLUSIVE_INSUFFICIENT_DATA. Naive blindly outputs MH1 without checking data sufficiency. |
+
+---
+
+## Detailed Case Descriptions
+
+### EVAL-01-SINGLE-HANDOFF — Clear Single-Handoff Exposure
+_All out-of-range readings fall in H2. No other handoff has out-of-range exposure._
+
+- **Category:** `UNIQUE_WINNER`
+- **Expected Outcome:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `EH2`)
+- **Primary Result:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `EH2`, Status: `Unvalidated prototype ranking`)
+- **Naive Baseline:** Picked `EH2`
+- **Scoring Analysis:** Both primary and naive correctly select EH2 because only one handoff has readings.
+
+| Handoff | Rank | Supported Obs Min | Exposure (°C·min) | Evidence Status |
 |---|---|---|---|---|
 | `EH2` | 1 | 50.0 | 90.00 | `Unvalidated prototype ranking` |
 
-### ✅ EVAL-02-SPANNING — Exposure Spanning Two Handoffs
+### EVAL-02-SPANNING — Exposure Spanning Multiple Handoffs
+_Excursion spans two handoffs. H2 holds 75% (120 DM) of out-of-range exposure, H3 holds 25% (40 DM). Primary target should select H2._
 
-_Excursion spans two handoffs. H2 holds 75% of out-of-range exposure, H3 holds 25%. Primary target should select H2._
+- **Category:** `UNIQUE_WINNER`
+- **Expected Outcome:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `FH2`)
+- **Primary Result:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `FH2`, Status: `Unvalidated prototype ranking`)
+- **Naive Baseline:** Picked `FH1`
+- **Scoring Analysis:** Naive picks FH1 due to boundary-inclusive match at 10:00:00, missing cumulative exposure entirely.
 
-| Field | Value |
-|---|---|
-| Excursion | `EXC-E02` |
-| Expected primary handoff | `FH2` |
-| Actual primary handoff | `FH2` |
-| Top exposure (°C·min) | 120.0 |
-| Evidence status | `Unvalidated prototype ranking` |
-| Expected outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Actual outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Primary correct | Yes |
-| Naive baseline handoff | `FH1` |
-| Naive correct | No |
-
-**Attribution rows returned by V_EXCURSION_ATTRIBUTION:**
-
-| Handoff | Rank | Obs Min | DM (°C·min) | Status |
+| Handoff | Rank | Supported Obs Min | Exposure (°C·min) | Evidence Status |
 |---|---|---|---|---|
 | `FH2` | 1 | 60.0 | 120.00 | `Unvalidated prototype ranking` |
 | `FH3` | 2 | 20.0 | 40.00 | `Unvalidated prototype ranking` |
 
-### ✅ EVAL-03-TIED — Tied Exposure — No Unique Winner
+### EVAL-03-TIED — Tied Exposure — No Unique Winner
+_Two handoffs (GH1 and GH2) have exactly equal supported out-of-range exposure (120 DM each). Attribution rank 1 is shared — no unique winner._
 
-_Two handoffs have exactly equal supported out-of-range exposure. Attribution rank 1 is shared — no unique winner._
+- **Category:** `TIE_HANDLING`
+- **Expected Outcome:** `TIED_NO_UNIQUE_WINNER` (Target: `None`)
+- **Primary Result:** `TIED_NO_UNIQUE_WINNER` (Target: `None`, Status: `Unvalidated prototype ranking`)
+- **Naive Baseline:** Picked `GH1`
+- **Scoring Analysis:** Primary detects tie and refuses to declare unique winner. Naive arbitrarily crowns GH1 based on first reading.
 
-| Field | Value |
-|---|---|
-| Excursion | `EXC-E03` |
-| Expected primary handoff | `None` |
-| Actual primary handoff | `None` |
-| Top exposure (°C·min) | 120.0 |
-| Evidence status | `Unvalidated prototype ranking` |
-| Expected outcome | `TIED_NO_UNIQUE_WINNER` |
-| Actual outcome | `TIED_NO_UNIQUE_WINNER` |
-| Primary correct | Yes |
-| Naive baseline handoff | `GH1` |
-| Naive correct | Yes |
-
-**Attribution rows returned by V_EXCURSION_ATTRIBUTION:**
-
-| Handoff | Rank | Obs Min | DM (°C·min) | Status |
+| Handoff | Rank | Supported Obs Min | Exposure (°C·min) | Evidence Status |
 |---|---|---|---|---|
 | `GH1` | 1 | 60.0 | 120.00 | `Unvalidated prototype ranking` |
 | `GH2` | 1 | 60.0 | 120.00 | `Unvalidated prototype ranking` |
 
-### ✅ EVAL-04-CLOCK-OFFSET — Clock Offset +300s Correction
+### EVAL-04-CLOCK-OFFSET — Clock Offset (+300s Skew Correction)
+_Logger has +300s clock skew. Breach occurs at 09:56-09:58 UTC (in KH1). Logger clock reports 10:01-10:03 (looks like KH2). Skew correction correctly attributes to KH1._
 
-_Logger has +300s clock skew. Without correction, readings land in wrong handoff. With correction, H2 is correctly identified._
+- **Category:** `UNIQUE_WINNER`
+- **Expected Outcome:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `KH1`)
+- **Primary Result:** `PRIMARY_MATCHES_GROUND_TRUTH` (Target: `KH1`, Status: `Unvalidated prototype ranking`)
+- **Naive Baseline:** Picked `KH2`
+- **Scoring Analysis:** Primary corrects skew (-300s) and identifies KH1. Naive uses raw timestamp 10:01 and erroneously blames KH2.
 
-| Field | Value |
-|---|---|
-| Excursion | `EXC-E04` |
-| Expected primary handoff | `KH2` |
-| Actual primary handoff | `KH2` |
-| Top exposure (°C·min) | 70.0 |
-| Evidence status | `Unvalidated prototype ranking` |
-| Expected outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Actual outcome | `PRIMARY_MATCHES_GROUND_TRUTH` |
-| Primary correct | Yes |
-| Naive baseline handoff | `KH2` |
-| Naive correct | No |
-
-**Attribution rows returned by V_EXCURSION_ATTRIBUTION:**
-
-| Handoff | Rank | Obs Min | DM (°C·min) | Status |
+| Handoff | Rank | Supported Obs Min | Exposure (°C·min) | Evidence Status |
 |---|---|---|---|---|
-| `KH2` | 1 | 35.0 | 70.00 | `Unvalidated prototype ranking` |
+| `KH1` | 1 | 4.0 | 16.00 | `Unvalidated prototype ranking` |
 
-### ✅ EVAL-05-MISSING-READINGS — Missing Readings — Inconclusive
+### EVAL-05-MISSING-READINGS — Missing Readings — Insufficient Data Abstention
+_Only two readings 90 minutes apart (>600s threshold). All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA._
 
-_Only two readings >600s apart. All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA._
+- **Category:** `DATA_ABSTENTION`
+- **Expected Outcome:** `INCONCLUSIVE` (Target: `None`)
+- **Primary Result:** `INCONCLUSIVE` (Target: `None`, Status: `INCONCLUSIVE_INSUFFICIENT_DATA`)
+- **Naive Baseline:** Picked `MH1`
+- **Scoring Analysis:** Primary abstains with INCONCLUSIVE_INSUFFICIENT_DATA. Naive blindly outputs MH1 without checking data sufficiency.
 
-| Field | Value |
-|---|---|
-| Excursion | `EXC-E05` |
-| Expected primary handoff | `None` |
-| Actual primary handoff | `None` |
-| Top exposure (°C·min) | — |
-| Evidence status | `INCONCLUSIVE_INSUFFICIENT_DATA` |
-| Expected outcome | `INCONCLUSIVE` |
-| Actual outcome | `INCONCLUSIVE` |
-| Primary correct | Yes |
-| Naive baseline handoff | `MH1` |
-| Naive correct | Yes |
-
-**Attribution rows returned by V_EXCURSION_ATTRIBUTION:**
-
-| Handoff | Rank | Obs Min | DM (°C·min) | Status |
+| Handoff | Rank | Supported Obs Min | Exposure (°C·min) | Evidence Status |
 |---|---|---|---|---|
 | `MH1` | 1 | 0.0 | 0.00 | `INCONCLUSIVE_INSUFFICIENT_DATA` |
 
 ---
 
-## Methodology Notes
+## Methodology & Disclaimers
 
-- **Primary target**: handoff with `MAX(handoff_total_dm)` within the excursion window, using supported sensor segments (gap ≤ 600 s).
-- **Naive baseline**: handoff containing the first observed out-of-range reading, using uncorrected raw timestamps and inclusive `>=` / `<=` boundaries.
-- **Clock correction**: primary target applies `corrected_time = reading_at_utc − clock_skew_seconds`.
-- **Ambiguous custody**: segments overlapping multiple handoffs are excluded from attributable exposure.
-- **Insufficient data**: if all segments are unsupported (gap > 600 s), status = `INCONCLUSIVE_INSUFFICIENT_DATA`.
-- **Tied exposure**: if two handoffs share rank 1, no unique winner is reported.
-
-> Gap threshold of 600 s is an engineering/demo prototype assumption — not a validated pharmaceutical standard.
+1. **Primary Target Definition:** Handoff with the largest supported out-of-range thermal exposure within the excursion window.
+2. **Gap Threshold:** 600 seconds (10 min) prototype default. Engineering assumption, not a validated pharmaceutical standard.
+3. **Coverage Accounting:** Supported observation time and unsupported gap time are explicitly separated. If supported time is zero, status is `INCONCLUSIVE_INSUFFICIENT_DATA`.
+4. **Disclaimer:** *Outputs reflect 5 synthetic unit fixtures and provide probabilistic decision support for quality team investigations. They do NOT constitute field validation or a legal determination of liability.*
 
 ---
 
-*Synthetic evaluation — not field validation.*
+*Synthetic evaluation — not real-world field validation.*

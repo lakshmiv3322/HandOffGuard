@@ -1,6 +1,7 @@
 {
-  "_label": "Developer-laptop benchmark -- not a production workload comparison.",
-  "generated_at": "2026-10-31 05:57 UTC",
+  "_label": "Small-fixture correctness and timing comparison -- not a production scale benchmark.",
+  "benchmark_type": "small-fixture correctness and timing comparison",
+  "generated_at": "2026-10-31 06:59 UTC",
   "shipment_id": "SHP-SYNTH-DENSE-01",
   "reading_count": 301,
   "handoff_count": 3,
@@ -15,7 +16,8 @@
     "python": "3.13.15",
     "pandas": "3.1.0",
     "numpy": "2.5.4",
-    "note": "Exasol runs in Docker on the same developer laptop. Exasol timings include TCP round-trip and result-set fetch over loopback. Results are NOT representative of production-scale workloads."
+    "database": "Exasol Personal (Docker on localhost:8563)",
+    "note": "Exasol runs in Docker on developer laptop. Exasol timings include SQL query dispatch, network round-trip, and result-set fetch over loopback. In-process pandas runs directly in local RAM."
   },
   "correctness": true,
   "per_handoff_correctness": [
@@ -41,36 +43,48 @@
       "ok": true
     }
   ],
+  "degree_minutes_scope_reconciliation": {
+    "whole_handoff_h2_dm": 289.12,
+    "excursion_restricted_h2_dm": 281.2,
+    "post_excursion_cooldown_h2_dm": 7.92,
+    "explanation": "281.20 DM measures strictly the 45-min excursion window (10:10-10:55 UTC). 289.12 DM measures the whole 60-min handoff window (10:00-11:00 UTC), including 7.92 DM from 3 cooldown minutes (10:55-10:58 UTC) inside H2 that remained above 8.0 C."
+  },
   "exasol_timings_s": [
-    0.130311,
-    0.12351,
-    0.101675,
-    0.095352,
-    0.095256,
-    0.094926,
-    0.231941,
-    0.134925,
-    0.096537,
-    0.124788
+    0.203693,
+    0.264233,
+    0.325628,
+    0.382656,
+    0.267894,
+    0.423203,
+    0.500568,
+    0.368304,
+    0.243073,
+    0.153028
   ],
   "pandas_timings_s": [
-    0.01451,
-    0.011608,
-    0.008576,
-    0.011461,
-    0.012924,
-    0.00766,
-    0.01152,
-    0.011946,
-    0.011268,
-    0.021854
+    0.0198,
+    0.01665,
+    0.015926,
+    0.014174,
+    0.01703,
+    0.016885,
+    0.020443,
+    0.014029,
+    0.016172,
+    0.013109
   ],
   "summary": {
-    "exasol_median_ms": 112.59,
-    "exasol_min_ms": 94.93,
-    "exasol_max_ms": 231.94,
-    "pandas_median_ms": 11.56,
-    "pandas_min_ms": 7.66,
-    "pandas_max_ms": 21.85
+    "exasol_median_ms": 296.76,
+    "exasol_min_ms": 153.03,
+    "exasol_max_ms": 500.57,
+    "pandas_median_ms": 16.41,
+    "pandas_min_ms": 13.11,
+    "pandas_max_ms": 20.44,
+    "measured_finding": "In-process pandas was faster on this small fixture due to zero network IPC overhead."
+  },
+  "scale_testing": {
+    "status": "NOT_COMPLETED",
+    "target_scale": ">= 10,000 shipments",
+    "reason": "Large-scale testing was not completed due to single-node container memory limits and local execution boundaries."
   }
 }
