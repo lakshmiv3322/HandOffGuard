@@ -21,8 +21,11 @@ export default function App() {
                 Handoff<span className="text-blue-600">Guard</span>
               </span>
             </Link>
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-800 border border-amber-200">
-              PROTOTYPE
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-slate-700 border border-slate-200">
+              Prototype Decision Support
+            </span>
+            <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold tracking-wide text-indigo-700 border border-indigo-200">
+              Synthetic Data
             </span>
           </div>
 
@@ -90,7 +93,7 @@ export default function App() {
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-400 no-print">
         <div className="max-w-7xl mx-auto px-4 space-y-1">
           <p>
-            HandoffGuard — ExaThon India 2026 Pharmaceutical Cold-Chain Prototype.
+            HandoffGuard — Pharmaceutical Cold-Chain Custody Attribution Prototype (Synthetic Data).
           </p>
           <p className="text-[11px] text-slate-400">
             Thermal exposure is estimated from ambient/logger data; thermal mass and packaging are not modelled in this prototype.

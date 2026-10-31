@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { useTimeline } from '../hooks/useTimeline';
 import { useTelemetryDrilldown } from '../hooks/useTelemetryDrilldown';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -110,6 +111,11 @@ export function TimelinePage() {
             <h2 className="text-base font-bold text-slate-800">Shipment Custody Temperature Profile</h2>
             <p className="text-xs text-slate-500">
               Synchronized telemetry from {loggers.length} logger(s) mapped against {handoffs.length} custody handoff intervals.
+              {readings.length > 0 && (
+                <span className="ml-2 font-mono text-slate-600 font-medium">
+                  | Latest recorded reading: {format(new Date(readings[readings.length - 1].recorded_at_utc), 'yyyy-MM-dd HH:mm')} UTC
+                </span>
+              )}
             </p>
           </div>
           {suspected_handoff_id && (

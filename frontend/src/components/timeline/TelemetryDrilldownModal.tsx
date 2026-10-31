@@ -226,6 +226,11 @@ export function TelemetryDrilldownModal({
               </div>
               <p className="text-xs text-slate-400">
                 High-resolution sensor telemetry joined with custody handoff windows in Exasol.
+                {readings.length > 0 && (
+                  <span className="ml-2 font-mono text-slate-300 font-medium">
+                    | Latest recorded reading: {format(new Date(readings[readings.length - 1].reading_at_utc), 'yyyy-MM-dd HH:mm')} UTC
+                  </span>
+                )}
               </p>
             </div>
           </div>

@@ -1,29 +1,30 @@
 # HandoffGuard — Cold-Chain Custody Attribution Prototype
 
-**ExaThon India 2026 Hackathon Submission**  
-*Track: Pharmaceutical Cold-Chain Analytics & Custody Accountability with Exasol Personal*
+**High-Throughput Pharmaceutical Cold-Chain Analytics & Custody Attribution**  
+*Prototype Decision Support Engine Powered by Exasol In-Memory Columnar Database*
 
 ---
 
 ## 🔬 Overview & The Problem
 
-Biologics, vaccines, and insulin require strict temperature maintenance (typically 2°C to 8°C). During multi-modal transport, shipments pass through an unbroken chain of custody:
-1. Central Cold Warehouse
+Biologics, vaccines, and cell therapies require strict thermal maintenance (e.g., 2°C to 8°C or deep frozen -25°C to -15°C). During multi-modal distribution, shipments pass through an unbroken chain of custody:
+1. Central Cold Storage Warehouse
 2. Line-Haul Refrigerated Truck
-3. Air Cargo / Cross-Dock Terminal
-4. Regional Hub / Staging Dock
-5. Last-Mile Motorbike Courier
+3. Air Cargo / Staging Cross-Dock Facility
+4. Regional Hub / Depot
+5. Last-Mile Delivery Courier
 
-When a shipment arrives at the destination hospital with an irreversible thermal excursion, parties dispute responsibility: the airline blames the ground handler; the ground handler blames the line-haul driver.
+When a shipment arrives with an irreversible thermal excursion, parties dispute responsibility: the airline blames ground handling; ground handling blames the line-haul carrier.
 
-**The Data Challenge:**
+**The Fundamental Data Challenge:**
 > **IoT temperature loggers do not know who owns the package.**  
-> Telemetry records contain only timestamp and temperature. **There is NO handoff ID in the sensor readings.**
+> Raw telemetry records contain only logger timestamps and temperature observations. **There is NO handoff ID or custody tag in sensor readings.**
 
-**HandoffGuard** solves this by leveraging **Exasol Personal's in-memory columnar engine** to execute high-throughput, non-equi interval joins (`reading_at_utc BETWEEN window_start_utc AND window_end_utc`) across millions of readings, calculating cumulative thermal stress in **degree-minutes** to attribute thermal breaches with defensible evidence.
+**HandoffGuard** solves this by leveraging **Exasol Personal's in-memory columnar engine** to execute high-throughput, non-equi interval joins across dense sensor observations and custody transfer logs, calculating cumulative thermal exposure in **degree-minutes** to attribute thermal breaches with defensible, transparent evidence.
 
-> **Mandatory Prototype Disclaimer:**  
-> *Exposure is estimated from ambient/logger temperature and time. It is not a direct measurement of product-core temperature; thermal mass, packaging, and product-specific heat transfer are not modelled in this prototype. Outputs provide probabilistic evidence for QA investigation, not a legal or regulatory determination of liability.*
+> [!IMPORTANT]
+> **Mandatory Quality Investigation Disclaimer:**  
+> *Thermal exposure is estimated from ambient/logger observations and stated engineering assumptions (e.g., 600s maximum supported segment duration). Product thermal mass, packaging insulation, and core kinetics are not modelled in this prototype. Results serve strictly as decision support for quality team investigations, NOT legal determinations of liability.*
 
 ---
 
@@ -35,12 +36,12 @@ When a shipment arrives at the destination hospital with an irreversible thermal
 ├─────────────────────────┬───────────────────────────────────────────────────────┤
 │    Frontend (React 18)  │               Backend (FastAPI / Python 3.11+)        │
 │                         │                                                       │
-│  - Shipments Dashboard  │   API Layer (/api/shipments, /api/excursions, ...)    │
+│  - Shipments Monitor    │   API Layer (/api/shipments, /api/excursions, ...)    │
 │  - Custody Timeline     │                       │                               │
-│  - Interval Join View   │   Service Layer (Attribution, Ingestion, Exposure)   │
+│  - Telemetry Drilldown  │   Service Layer (Attribution, Ingestion, Exposure)   │
 │  - Evidence Report      │                       │                               │
 │  - Prevention Advisory  │   Repository Adapter Layer                            │
-│                         │        ┌──────────────┴──────────────┐                │
+│  - Exasol Benchmarks    │        ┌──────────────┴──────────────┐                │
 │                         │        ▼                             ▼                │
 │                         │   Dev Adapter                   Exasol Adapter        │
 │                         │   (SQLite / Local)              (pyexasol Client)     │
@@ -48,164 +49,83 @@ When a shipment arrives at the destination hospital with an irreversible thermal
                                    │                             │
                                    ▼                             ▼
                           Local SQLite DB               Exasol Personal DB (Port 8563)
-                                                        - v_interval_join_membership
-                                                        - v_handoff_exposure
-                                                        - v_excursion_attribution
+                                                        - V_READING_HANDOFF_MEMBERSHIP
+                                                        - V_HANDOFF_THERMAL_EXPOSURE
+                                                        - V_EXCURSION_ATTRIBUTION
 ```
 
-### Data Flow
-1. **IoT Ingestion**: Sensor telemetry files in 3 common formats (Format A: Warehouse ISO 8601, Format B: Reefer Truck local timestamps with timezone offsets and Fahrenheit auto-conversion, Format C: Last-Mile Courier split Date/Time) are parsed and loaded into Exasol `logger_readings`.
-2. **Interval Join Resolution**: Exasol view `v_interval_join_membership` performs a non-equi join on `r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc`, resolving custody boundaries without mutating raw sensor tables.
-3. **Thermal Exposure**: View `v_handoff_exposure` integrates temperature-time curves into Degree-Minutes:
-   $$\text{Degree-Minutes} = \int \max(0, T(t) - T_{\text{max}}) \, dt$$
-4. **Attribution & Evidence**: View `v_excursion_attribution` weights thermal exposure share, penalizes clock skew and custody gaps, and compares results against a naive first-threshold-crossing baseline.
-5. **Investigation & Prevention**: Quality managers review interactive timelines, export printable PDF evidence audits, and inspect forward-looking risk advisories.
+### Core Analytical Methodology (Migration 005)
+
+1. **Clock Skew Correction & Half-Open Windows**:
+   $$\text{corrected\_time} = \text{reading\_at\_utc} - \text{COALESCE}(\text{clock\_skew\_seconds}, 0)$$
+   Matched using half-open intervals:
+   $$\text{corrected\_time} \ge \text{actual\_start\_at} \quad\text{AND}\quad \text{corrected\_time} < \text{actual\_end\_at}$$
+2. **Deterministic Sensor Segments**:
+   Segments are formed via `LEAD(corrected_at_utc) OVER (PARTITION BY logger_id ORDER BY corrected_at_utc, reading_id)`.
+   A configurable maximum gap threshold (default 600s / 10 min) is enforced. Unsupported gaps contribute zero duration and cannot carry temperatures forward.
+3. **Ambiguity Exclusion**:
+   Overlapping custody intervals (where multiple handoffs claim the same time window) are detected across full segment intersections and conservatively excluded from single-party attributable exposure, flagged as `AMBIGUOUS_CUSTODY_EXCLUSION`.
+4. **Actual vs Planned Custody Windows**:
+   Actual start and end timestamps are required for custody attribution. Handoffs with planned-only timestamps are marked `PLANNED_ONLY` and excluded by default.
+5. **Single-Logger MVP Rule**:
+   Multi-logger assignments emit explicit `INCONCLUSIVE_MULTI_LOGGER` warnings to avoid double-counting exposure.
+6. **Excursion-Restricted Integration**:
+   Attribution integrates thermal stress strictly over the intersection of the handoff custody window and the excursion interval:
+   $$\text{Degree-Minutes} = \int_{t \in \text{Handoff} \cap \text{Excursion}} \max(0, T(t) - T_{\text{product\_max}}) \, dt$$
 
 ---
 
-## 💾 Exasol Schema Contract
+## 🎯 Three Demonstration Scenarios
 
-The application enforces strict Exasol compatibility. All tables and views are managed under schema `HANDOFFGUARD`.
+HandoffGuard comes pre-loaded with three deterministic scenarios demonstrating distinct analytical outcomes:
 
-```sql
--- Core Master Tables
-CREATE TABLE HANDOFFGUARD.products (
-    product_id                INTEGER IDENTITY PRIMARY KEY,
-    name                      VARCHAR(200) NOT NULL,
-    min_temp_c                DECIMAL(5, 2) NOT NULL,
-    max_temp_c                DECIMAL(5, 2) NOT NULL,
-    allowed_excursion_minutes INTEGER NOT NULL,
-    thermal_mass_class        VARCHAR(50) NOT NULL,
-    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+| Scenario | Shipment ID | Excursion ID | Characteristics | Outcome & Status |
+|---|---|---|---|---|
+| **1. Clear Single-Handoff Exposure** | `SHP-SYNTH-DENSE-01` | `EXC-SYNTH-01` | 301 readings at 1-min intervals. 45-min breach during Handoff 2 (Dock Transfer). | **Rank #1**: Handoff 2 holds 281.2 °C·min (100% share). Status: *Prototype Ranking*. |
+| **2. Insufficient Data** | `SHP-2026-0881` | `EXC-1002` | 9 sparse readings with multi-hour gaps (>600s threshold). | **Inconclusive**: Status: `INCONCLUSIVE_INSUFFICIENT_DATA`. Exposure displayed as *Unavailable* (observed peak 18.2°C preserved). |
+| **3. Conflicting / Ambiguous Custody** | `SHP-SYNTH-AMBIG-01` | `EXC-SYNTH-02` | Overlapping actual custody windows (10:00 to 10:15) during thermal breach. | **Inconclusive**: 12.0 ambiguous minutes excluded from attributable exposure. Status: `AMBIGUOUS_CUSTODY_EXCLUSION`. |
 
-CREATE TABLE HANDOFFGUARD.shipments (
-    shipment_id          INTEGER IDENTITY PRIMARY KEY,
-    shipment_code        VARCHAR(100) NOT NULL UNIQUE,
-    product_id           INTEGER NOT NULL REFERENCES HANDOFFGUARD.products(product_id),
-    origin               VARCHAR(200) NOT NULL,
-    destination          VARCHAR(200) NOT NULL,
-    dispatched_at        TIMESTAMP NOT NULL,
-    expected_delivery_at TIMESTAMP NOT NULL,
-    status               VARCHAR(50) NOT NULL,
-    created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE HANDOFFGUARD.handoffs (
-    handoff_id         INTEGER IDENTITY PRIMARY KEY,
-    shipment_id        INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
-    sequence_no        INTEGER NOT NULL,
-    handoff_type       VARCHAR(50) NOT NULL,
-    from_party         VARCHAR(200) NOT NULL,
-    to_party           VARCHAR(200) NOT NULL,
-    location           VARCHAR(200) NOT NULL,
-    window_start_utc   TIMESTAMP NOT NULL,
-    window_end_utc     TIMESTAMP NOT NULL,
-    reported_start_utc TIMESTAMP,
-    reported_end_utc   TIMESTAMP,
-    clock_skew_seconds INTEGER DEFAULT 0,
-    created_at         TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE HANDOFFGUARD.logger_devices (
-    logger_id                 INTEGER IDENTITY PRIMARY KEY,
-    device_code               VARCHAR(100) NOT NULL UNIQUE,
-    assigned_shipment_id      INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
-    sampling_interval_seconds INTEGER DEFAULT 60,
-    clock_skew_seconds        INTEGER DEFAULT 0,
-    data_quality_flag         VARCHAR(50) DEFAULT 'nominal',
-    created_at                TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- STRICT INVARIANT: NO handoff_id foreign key in readings!
-CREATE TABLE HANDOFFGUARD.logger_readings (
-    reading_id      DECIMAL(18, 0) IDENTITY PRIMARY KEY,
-    logger_id       INTEGER NOT NULL REFERENCES HANDOFFGUARD.logger_devices(logger_id),
-    reading_at_utc  TIMESTAMP NOT NULL,
-    temperature_c   DECIMAL(5, 2) NOT NULL,
-    humidity_pct    DECIMAL(5, 2),
-    battery_pct     DECIMAL(5, 2),
-    quality_flag    VARCHAR(50) DEFAULT 'valid',
-    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE HANDOFFGUARD.excursion_events (
-    excursion_id            INTEGER IDENTITY PRIMARY KEY,
-    shipment_id             INTEGER NOT NULL REFERENCES HANDOFFGUARD.shipments(shipment_id),
-    started_at_utc          TIMESTAMP NOT NULL,
-    ended_at_utc            TIMESTAMP NOT NULL,
-    duration_minutes        INTEGER NOT NULL,
-    peak_temp_c             DECIMAL(5, 2) NOT NULL,
-    severity                VARCHAR(50) NOT NULL,
-    ground_truth_handoff_id INTEGER,
-    ground_truth_cause      VARCHAR(500),
-    created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+Seed or re-verify these scenarios at any time:
+```bash
+python scripts/seed_demo_scenarios.py
 ```
-
-### Exasol Analytical Views
-
-1. **`v_interval_join_membership`**: Executes the non-equi join with static clock-skew adjustments (`ADD_SECONDS`):
-   ```sql
-   CREATE OR REPLACE VIEW HANDOFFGUARD.v_interval_join_membership AS
-   SELECT
-       r.reading_id,
-       r.logger_id,
-       r.reading_at_utc,
-       r.temperature_c,
-       ld.assigned_shipment_id AS shipment_id,
-       h.handoff_id,
-       h.sequence_no,
-       h.handoff_type,
-       h.from_party,
-       h.to_party,
-       h.location,
-       CASE
-           WHEN r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc THEN 'matched'
-           ELSE 'matched_with_skew'
-       END AS membership_status
-   FROM HANDOFFGUARD.logger_readings r
-   JOIN HANDOFFGUARD.logger_devices ld ON r.logger_id = ld.logger_id
-   JOIN HANDOFFGUARD.handoffs h
-       ON h.shipment_id = ld.assigned_shipment_id
-       AND r.reading_at_utc BETWEEN ADD_SECONDS(h.window_start_utc, -120)
-                               AND ADD_SECONDS(h.window_end_utc, 120);
-   ```
-
-2. **`v_handoff_exposure`**: Computes degree-minutes above and below the safe threshold band.
-3. **`v_excursion_attribution`**: Computes exposure shares, penalty factors, confidence scores, and ranks.
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### Option A: Complete Setup with Exasol Personal (Recommended for Judging)
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Docker (for Exasol Personal)
 
-#### 1. Start Exasol Personal via Docker
+### 1. Start Exasol Personal
 ```bash
 docker run --name exasol_test -p 8563:8563 -d exasol/docker-db:latest
 ```
 
-#### 2. Initialize Schema & Seed Data
+### 2. Configure Environment
+Copy `.env.example` to `.env` in the repository root and `backend/`:
 ```bash
-# Run the master setup script and synthetic telemetry seeder
-python init_db.py
+cp .env.example backend/.env
 ```
-*This executes `setup_exasol.sql` and loads 5,200+ IoT sensor readings.*
+*(Default settings connect to Exasol on localhost:8563 with no plaintext secret credentials).*
 
-#### 3. Start Backend
+### 3. Initialize Database & Seed Scenarios
+```bash
+# Seed all 3 demo scenarios into Exasol live schema
+backend\venv\Scripts\python scripts/seed_demo_scenarios.py
+```
+
+### 4. Start Backend Server
 ```bash
 cd backend
-python -m venv venv
-venv\Scripts\activate   # On Linux/macOS: source venv/bin/activate
-pip install -r requirements.txt
-# Set DATABASE_ENGINE=exasol in your .env
-uvicorn app.main:app --reload --port 8000
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-- Swagger API Docs: http://localhost:8000/docs
-- Exasol Contract Verification: http://localhost:8000/api/health/exasol
+- API Docs: http://localhost:8000/docs
+- Health Check: http://localhost:8000/health
 
-#### 4. Start Frontend
+### 5. Start Frontend UI
 ```bash
 cd frontend
 npm install
@@ -215,64 +135,47 @@ npm run dev
 
 ---
 
-### Option B: Local Development / Headless Mode (SQLite Fallback)
+## 🧪 Verification & Evaluation Commands
 
-If Exasol is not running locally, HandoffGuard automatically falls back to its built-in SQLite engine with no code changes:
-
+### 1. Exasol Integration Tests (14 Scenarios)
+Executes production migration SQL retargeted against an isolated schema `HANDOFFGUARD_TEST`:
 ```bash
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python scripts/seed_data.py
-uvicorn app.main:app --reload --port 8000
+backend\venv\Scripts\python backend/tests/run_exasol_integration_tests.py
 ```
+*Result: 14/14 PASS.*
 
----
-
-## 📊 Performance & Validation Benchmarks
-
-### 1. Interval Join Performance Benchmark (`reports/interval_join_benchmark.md`)
-Evaluated across **100,000 temperature readings** and **500 custody handoff windows**:
-
-| Engine | Readings Processed | Execution Time | Throughput | Status |
-|---|---|---|---|---|
-| **Standard SQL (SQLite Baseline)** | 100,000 | 0.4165s | 240,094 rows/s | `completed` |
-| **Exasol Personal (Columnar In-Memory)** | 100,000 | **0.0820s** | **1,219,512 rows/s** | `high-throughput` |
-
-*Reproduce via:* `python scripts/benchmark_interval_join.py`
-
-### 2. Ground-Truth Attribution Validation (`reports/attribution_validation.json`)
-Evaluated across **30 synthetic multi-modal shipments** with injected thermal faults:
-- **Top-1 Attribution Accuracy**: **100.0% (30 / 30)**
-- **Top-3 Attribution Accuracy**: **100.0% (30 / 30)**
-- **Mean Confidence Score**: **0.99**
-
-*Reproduce via:* `python scripts/validate_attribution.py`
-
----
-
-## 🧪 Automated Test Suite
-
-Run the full pytest suite:
+### 2. Synthetic Evaluation Suite (`reports/attribution_evaluation.md`)
+Runs reproducible evaluation against 5 held-out synthetic cases (single-handoff, spanning, tied, clock offset, missing data):
 ```bash
-cd backend
-python -m pytest tests/test_attribution.py tests/test_exposure.py tests/test_timeline.py tests/test_ingestion.py -v
+backend\venv\Scripts\python backend/evaluation/run_evaluation.py
 ```
-**Results:** `12 passed in 0.09s`
+*Result: Primary algorithm 5/5 correct (100%), Naive baseline 3/5 correct (60%).*
+
+### 3. Practical Benchmark: Exasol vs pandas (`reports/benchmark_results.md`)
+Compares Exasol view execution against an equivalent pandas interval join workload with mathematical correctness verification:
+```bash
+backend\venv\Scripts\python scripts/benchmark_exasol_vs_pandas.py
+```
+*Result: Mathematical agreement within 0.0000 °C·min. Median Exasol loopback: 112.6 ms; median pandas in-process: 11.6 ms.*
+
+### 4. End-to-End API Smoke Tests
+```bash
+backend\venv\Scripts\python backend/tests/test_api_endpoints.py
+```
+*Result: All endpoints PASS.*
 
 ---
 
-## 📑 Key Project Deliverables & Artifacts
+## 🖨 Printable Evidence Reports
 
-- **[DEMO_SCRIPT.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\DEMO_SCRIPT.md)**: Exact 3-minute hackathon pitch flow.
-- **[QNA_PREP.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\QNA_PREP.md)**: 18 jury defense questions & technical answers.
-- **[SUBMISSION_CHECKLIST.md](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\SUBMISSION_CHECKLIST.md)**: Compliance and completeness audit.
-- **[setup_exasol.sql](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\setup_exasol.sql)**: Master SQL DDL & analytical view definitions.
-- **[init_db.py](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\init_db.py)**: Automated database bootstrap and seed runner.
+HandoffGuard generates audit-grade, print-friendly evidence reports for quality and regulatory review:
+- Navigate to any excursion attribution view (e.g. `SHP-SYNTH-DENSE-01` / `EXC-SYNTH-01`).
+- Click **"View Official Evidence Audit Report"**.
+- Click **"Print Report (PDF)"** or press `Ctrl+P`.
+- All navigation and interactive controls automatically hide via `@media print` CSS rules, producing clean audit documentation.
 
 ---
 
 ## ⚖ License
 
-This project is licensed under the MIT License — see the [LICENSE](file:///C:/Users/a_ven/.gemini\antigravity\scratch\handoffguard\LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
