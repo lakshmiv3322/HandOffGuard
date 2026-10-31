@@ -8,6 +8,7 @@ router = APIRouter(tags=["Health"])
 
 
 @router.get("/health")
+@router.get("/api/health")
 async def health_check():
     """
     Returns application health status, database connectivity, engine name,
