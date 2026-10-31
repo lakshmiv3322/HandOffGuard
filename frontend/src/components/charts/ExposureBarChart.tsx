@@ -12,7 +12,7 @@ import {
 import { getShipmentExposure, HandoffExposureRecord, ShipmentExposureResponse } from '../../api/exposure';
 
 interface Props {
-  shipmentId: number;
+  shipmentId: string | number;
 }
 
 export const ExposureBarChart: React.FC<Props> = ({ shipmentId }) => {

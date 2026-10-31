@@ -51,9 +51,9 @@ export function EvidenceReportPage() {
     excursion_details,
     custody_timeline_summary,
     ranked_handoffs,
-    naive_baseline_comparison,
     data_quality_notes,
     limitations,
+    disclaimer,
   } = data;
 
   return (
@@ -157,17 +157,14 @@ export function EvidenceReportPage() {
           </div>
         </div>
 
-        {/* Methodology Comparison Box */}
+        {/* Methodology Notes */}
         <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
-          <p className="font-bold text-slate-800">Attribution Methodology & Comparison</p>
+          <p className="font-bold text-slate-800">Custody Attribution Methodology</p>
           <p className="text-slate-600">
-            <span className="font-semibold">Top Ranked Handoff:</span> {ranked_handoffs[0]?.handoff_label || 'None'} ({ranked_handoffs[0]?.exposure_share_pct}% exposure share)
+            Attribution is derived strictly via dynamic time-interval joins intersecting supported sensor telemetry (segments &le; 600s) with official custody windows and excursion boundaries.
           </p>
-          <p className="text-slate-600">
-            <span className="font-semibold">Naive First-Crossing Baseline:</span> {naive_baseline_comparison.handoff_label || (naive_baseline_comparison as any).naive_handoff_label || 'None'}
-          </p>
-          <p className="text-slate-700 italic pt-1">
-            {naive_baseline_comparison.explanation || ''}
+          <p className="text-slate-500 italic pt-1">
+            {disclaimer}
           </p>
         </div>
 
@@ -185,20 +182,26 @@ export function EvidenceReportPage() {
                 <th className="p-2 text-right">Exposure (°C·min)</th>
                 <th className="p-2 text-right">Share (%)</th>
                 <th className="p-2 text-right">Peak (°C)</th>
-                <th className="p-2 text-center">Confidence</th>
+                <th className="p-2 text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {ranked_handoffs.map((h) => (
-                <tr key={h.handoff_id} className={`divide-x divide-slate-200 ${h.rank === 1 ? 'bg-blue-50/50 font-medium' : ''}`}>
-                  <td className="p-2 text-center font-bold">#{h.rank}</td>
+                <tr key={h.handoff_id} className={`divide-x divide-slate-200 ${h.rank === 1 && !h.is_candidate_only ? 'bg-blue-50/50 font-medium' : ''}`}>
+                  <td className="p-2 text-center font-bold">
+                    {h.rank !== null && h.rank !== undefined ? `#${h.rank}` : '—'}
+                  </td>
                   <td className="p-2">
                     <p className="font-semibold">{h.handoff_label}</p>
                     <p className="text-[10px] text-slate-500">Segment #{h.sequence_no} @ {h.location}</p>
                   </td>
                   <td className="p-2 text-center capitalize">{h.handoff_type}</td>
-                  <td className="p-2 text-right font-mono">{h.exposure_degree_minutes.toFixed(1)}</td>
-                  <td className="p-2 text-right font-mono font-bold">{h.exposure_share_pct.toFixed(1)}%</td>
+                  <td className={`p-2 text-right font-mono ${h.exposure_degree_minutes === null ? 'text-slate-400 italic' : ''}`}>
+                    {h.exposure_degree_minutes !== null && h.exposure_degree_minutes !== undefined ? h.exposure_degree_minutes.toFixed(1) : 'Unavailable'}
+                  </td>
+                  <td className="p-2 text-right font-mono font-bold">
+                    {h.exposure_share_pct !== null && h.exposure_share_pct !== undefined ? `${h.exposure_share_pct.toFixed(1)}%` : 'N/A'}
+                  </td>
                   <td className="p-2 text-right font-mono">{h.peak_temp_c}°C</td>
                   <td className="p-2 text-center">{h.confidence_label}</td>
                 </tr>

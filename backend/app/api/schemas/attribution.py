@@ -10,7 +10,8 @@ from app.api.schemas.excursion import ExcursionResponse
 class AttributionHandoffItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    rank: int
+    rank: Optional[int] = None  # None when inconclusive (no winning rank assigned)
+    is_candidate_only: bool = False
     handoff_id: str | int
     handoff_label: str
     sequence_no: int
@@ -18,13 +19,16 @@ class AttributionHandoffItem(BaseModel):
     from_party: str
     to_party: str
     location: str
-    exposure_degree_minutes: float
-    exposure_share_pct: float
-    allowed_excursion_time_consumed_pct: float
-    confidence_score: float
+    observed_reading_count: int = 0
+    supported_observation_minutes: float = 0.0
+    unsupported_gap_minutes: float = 0.0
+    exposure_degree_minutes: Optional[float] = None  # None when unavailable due to insufficient data
+    exposure_share_pct: Optional[float] = None
+    allowed_excursion_time_consumed_pct: Optional[float] = None
+    confidence_score: Optional[float] = None  # Null unless calibrated method exists
     confidence_label: str
     duration_outside_safe_range_minutes: float
-    peak_temp_c: float
+    peak_temp_c: float  # Preserved observed peak temperature
     reading_count: int
     logger_ids: list[str]
     clock_skew_corrections: list[float]
@@ -32,7 +36,7 @@ class AttributionHandoffItem(BaseModel):
     has_overlapping_windows: bool
     first_threshold_crossing_utc: Optional[str] = None
     evidence_notes: list[str]
-    matches_naive_baseline: bool = False
+    matches_naive_baseline: Optional[bool] = None
 
 
 class NaiveBaselineComparison(BaseModel):
@@ -45,6 +49,9 @@ class NaiveBaselineComparison(BaseModel):
 
 class AttributionResponse(BaseModel):
     excursion_id: str | int
+    shipment_id: Optional[str | int] = None
+    attribution_status: str  # e.g. "INCONCLUSIVE_INSUFFICIENT_DATA", "PROTOTYPE_RANKING"
+    selected_handoff_id: Optional[str | int] = None  # Null when inconclusive
     excursion: ExcursionResponse
     ranked_handoffs: list[AttributionHandoffItem]
     top_ranked_handoff: Optional[AttributionHandoffItem] = None

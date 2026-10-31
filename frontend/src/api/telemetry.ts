@@ -27,10 +27,10 @@ export interface DrilldownHandoff {
   window_end_utc: string;
   dwell_minutes: number;
   reading_count: number;
-  exposure_degree_minutes: number;
-  exposure_share_pct: number;
+  exposure_degree_minutes: number | null;
+  exposure_share_pct: number | null;
   attribution_confidence: string;
-  confidence_score: number;
+  confidence_score: number | null;
   evidence_notes: string[];
 }
 

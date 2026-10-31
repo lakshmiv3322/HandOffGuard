@@ -10,7 +10,7 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
   // Generate practical recommended investigation steps based on metrics
   const recommendedSteps: string[] = [];
 
-  if (handoff.exposure_share_pct > 50) {
+  if ((handoff.exposure_share_pct ?? 0) > 50) {
     recommendedSteps.push(
       `Issue formal Carrier Inquiry to ${handoff.to_party || 'receiving party'} regarding thermal management during ${handoff.handoff_type}.`
     );
@@ -39,20 +39,22 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
     recommendedSteps.push('Review secondary logger readings and package insulation condition upon destination receipt.');
   }
 
-  const isTopCulprit = handoff.rank === 1;
+  const isTopCulprit = handoff.rank === 1 && !handoff.is_candidate_only;
 
   return (
     <div
       className={`rounded-xl border p-5 shadow-sm space-y-4 ${
         isTopCulprit
           ? 'bg-rose-50/40 border-rose-200'
+          : handoff.is_candidate_only
+          ? 'bg-amber-50/30 border-amber-200'
           : 'bg-white border-slate-200'
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
         <div>
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
-            Evidence Report Card
+            {handoff.is_candidate_only ? 'Candidate Under Investigation' : 'Evidence Report Card'}
           </span>
           <h3 className="text-base font-bold text-slate-900 mt-0.5">
             Leg #{handoff.sequence_no}: {handoff.handoff_label}
@@ -65,14 +67,15 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
         <div className="flex items-center gap-2">
           <span
             className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              handoff.confidence_label.toLowerCase() === 'high'
-                ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                : handoff.confidence_label.toLowerCase() === 'medium'
+              handoff.confidence_label.toLowerCase().includes('inconclusive') || handoff.is_candidate_only
                 ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : 'bg-blue-100 text-blue-800 border border-blue-300'
             }`}
           >
-            Attribution Score: {(handoff.confidence_score * 100).toFixed(0)}/100 ({handoff.confidence_label})
+            {handoff.confidence_label}
+            {handoff.confidence_score !== null && handoff.confidence_score !== undefined
+              ? ` • ${(handoff.confidence_score * 100).toFixed(0)}%`
+              : ''}
           </span>
         </div>
       </div>
@@ -92,23 +95,33 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
 
         {/* Metric 2: Window Overlap */}
         <div className="p-3 bg-white rounded-lg border border-slate-200">
-          <p className="text-[10px] uppercase font-bold text-slate-400">Window Overlap</p>
+          <p className="text-[10px] uppercase font-bold text-slate-400">Supported Overlap</p>
           <p className="text-sm font-black text-slate-800 font-mono mt-1">
-            {handoff.duration_outside_safe_range_minutes.toFixed(0)} min
+            {(handoff.supported_observation_minutes ?? handoff.duration_outside_safe_range_minutes).toFixed(0)} min
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5">
-            Active excursion overlap duration
+            Supported telemetry observation
           </p>
         </div>
 
         {/* Metric 3: Thermal Exposure */}
         <div className="p-3 bg-white rounded-lg border border-slate-200">
           <p className="text-[10px] uppercase font-bold text-slate-400">Degree-Minutes Outside Safe</p>
-          <p className="text-sm font-black text-rose-600 font-mono mt-1">
-            {handoff.exposure_degree_minutes.toFixed(1)} °C·min
+          <p className={`text-sm font-black font-mono mt-1 ${
+            handoff.exposure_degree_minutes === null || handoff.exposure_degree_minutes === undefined
+              ? 'text-slate-400 italic'
+              : handoff.exposure_degree_minutes > 0
+              ? 'text-rose-600'
+              : 'text-emerald-600'
+          }`}>
+            {handoff.exposure_degree_minutes === null || handoff.exposure_degree_minutes === undefined
+              ? 'Unavailable'
+              : `${handoff.exposure_degree_minutes.toFixed(1)} °C·min`}
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5">
-            {handoff.exposure_share_pct.toFixed(1)}% of total shipment breach
+            {handoff.exposure_share_pct === null || handoff.exposure_share_pct === undefined
+              ? 'Insufficient telemetry coverage'
+              : `${handoff.exposure_share_pct.toFixed(1)}% of total shipment breach`}
           </p>
         </div>
 
@@ -116,7 +129,7 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
         <div className="p-3 bg-white rounded-lg border border-slate-200">
           <p className="text-[10px] uppercase font-bold text-slate-400">Reading Coverage</p>
           <p className="text-sm font-black text-slate-800 font-mono mt-1">
-            {handoff.reading_count} readings
+            {handoff.observed_reading_count ?? handoff.reading_count} readings
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5 truncate">
             Loggers: {handoff.logger_ids.join(', ') || 'N/A'}

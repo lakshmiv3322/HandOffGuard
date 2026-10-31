@@ -147,12 +147,12 @@ export function AttributionPage() {
                 HandoffGuard Attribution (Exasol Degree-Minutes)
               </span>
               <p className="text-sm font-bold text-slate-900 mt-1">
-                {top_ranked_handoff ? top_ranked_handoff.handoff_label : 'None'}
+                {top_ranked_handoff ? top_ranked_handoff.handoff_label : 'Inconclusive — No single custody leg attributed'}
               </p>
               <p className="text-xs text-slate-600 mt-1">
-                Share: <span className="font-semibold text-rose-600">{top_ranked_handoff?.exposure_share_pct}%</span> |{' '}
-                Exposure: <span className="font-semibold">{top_ranked_handoff?.exposure_degree_minutes} °C·min</span> |{' '}
-                Confidence: <span className="font-semibold uppercase">{top_ranked_handoff?.confidence_label}</span>
+                Share: <span className="font-semibold text-rose-600">{top_ranked_handoff?.exposure_share_pct !== null && top_ranked_handoff?.exposure_share_pct !== undefined ? `${top_ranked_handoff.exposure_share_pct}%` : 'N/A'}</span> |{' '}
+                Exposure: <span className="font-semibold">{top_ranked_handoff?.exposure_degree_minutes !== null && top_ranked_handoff?.exposure_degree_minutes !== undefined ? `${top_ranked_handoff.exposure_degree_minutes} °C·min` : 'Unavailable'}</span> |{' '}
+                Status: <span className="font-semibold uppercase">{top_ranked_handoff?.confidence_label ?? data.attribution_status ?? 'INCONCLUSIVE'}</span>
               </p>
             </div>
 
@@ -210,11 +210,19 @@ export function AttributionPage() {
               <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600 pt-1 border-t border-slate-100">
                 <div>
                   <span className="text-slate-400">Share:</span>{' '}
-                  <span className="font-bold">{h.exposure_share_pct.toFixed(1)}%</span>
+                  <span className="font-bold">
+                    {h.exposure_share_pct !== null && h.exposure_share_pct !== undefined
+                      ? `${h.exposure_share_pct.toFixed(1)}%`
+                      : '—'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400">Exposure:</span>{' '}
-                  <span className="font-mono">{h.exposure_degree_minutes.toFixed(1)} °C·m</span>
+                  <span className="font-mono">
+                    {h.exposure_degree_minutes !== null && h.exposure_degree_minutes !== undefined
+                      ? `${h.exposure_degree_minutes.toFixed(1)} °C·m`
+                      : 'Unavailable'}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400">Peak:</span>{' '}

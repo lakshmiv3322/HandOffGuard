@@ -526,8 +526,10 @@ export function TelemetryDrilldownModal({
                           : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
-                      Confidence: {selectedHandoff.attribution_confidence} (
-                      {Math.round(selectedHandoff.confidence_score * 100)}%)
+                      Confidence: {selectedHandoff.attribution_confidence}
+                      {selectedHandoff.confidence_score !== null && selectedHandoff.confidence_score !== undefined
+                        ? ` (${Math.round(selectedHandoff.confidence_score * 100)}%)`
+                        : ''}
                     </span>
                   </div>
 
@@ -558,13 +560,17 @@ export function TelemetryDrilldownModal({
                   <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Exposure (°C·min)</p>
                     <p className="text-sm font-black text-rose-600 font-mono mt-0.5">
-                      {selectedHandoff.exposure_degree_minutes.toFixed(1)}
+                      {selectedHandoff.exposure_degree_minutes !== null && selectedHandoff.exposure_degree_minutes !== undefined
+                        ? selectedHandoff.exposure_degree_minutes.toFixed(1)
+                        : 'Unavailable'}
                     </p>
                   </div>
                   <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Exposure Share</p>
                     <p className="text-sm font-black text-slate-800 font-mono mt-0.5">
-                      {selectedHandoff.exposure_share_pct.toFixed(1)}%
+                      {selectedHandoff.exposure_share_pct !== null && selectedHandoff.exposure_share_pct !== undefined
+                        ? `${selectedHandoff.exposure_share_pct.toFixed(1)}%`
+                        : '—'}
                     </p>
                   </div>
                 </div>

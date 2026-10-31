@@ -38,7 +38,7 @@ export function HorizontalShipmentStepper({
           </p>
         </div>
 
-        {topHandoff && (
+        {topHandoff ? (
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
@@ -54,7 +54,14 @@ export function HorizontalShipmentStepper({
                     : 'bg-amber-500 animate-pulse'
                 }`}
               />
-              Most Likely Custody Leg: #{topHandoff.sequence_no} ({topHandoff.exposure_share_pct}% share)
+              Most Likely Custody Leg: #{topHandoff.sequence_no} ({topHandoff.exposure_share_pct !== null ? `${topHandoff.exposure_share_pct}% share` : 'Calculated'})
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Attribution Inconclusive — Insufficient Telemetry Coverage
             </span>
           </div>
         )}
@@ -117,12 +124,14 @@ export function HorizontalShipmentStepper({
 
                 {/* Exposure Share Badge */}
                 <span className={`mt-1 inline-block px-1.5 py-0.5 rounded text-[10px] ${badgeColor}`}>
-                  {h.exposure_share_pct.toFixed(0)}% share
+                  {h.exposure_share_pct !== null && h.exposure_share_pct !== undefined
+                    ? `${h.exposure_share_pct.toFixed(0)}% share`
+                    : 'Data gap'}
                 </span>
 
-                {isTop && (
+                {isTop && !h.is_candidate_only && (
                   <span className="mt-1 text-[9px] font-black uppercase tracking-wider text-rose-700">
-                    Culprit
+                    Highest Exposure
                   </span>
                 )}
               </div>

@@ -114,7 +114,8 @@ export interface ExcursionEvent {
 
 // ─── Attribution ──────────────────────────────────────────────
 export interface AttributionHandoff {
-  rank: number;
+  rank: number | null;
+  is_candidate_only?: boolean;
   handoff_id: string | number;
   handoff_label: string;
   sequence_no: number;
@@ -122,10 +123,13 @@ export interface AttributionHandoff {
   from_party: string;
   to_party: string;
   location: string;
-  exposure_degree_minutes: number;
-  exposure_share_pct: number;
-  allowed_excursion_time_consumed_pct: number;
-  confidence_score: number;
+  observed_reading_count?: number;
+  supported_observation_minutes?: number;
+  unsupported_gap_minutes?: number;
+  exposure_degree_minutes: number | null;
+  exposure_share_pct: number | null;
+  allowed_excursion_time_consumed_pct: number | null;
+  confidence_score: number | null;
   confidence_label: string;
   duration_outside_safe_range_minutes: number;
   peak_temp_c: number;
@@ -136,7 +140,7 @@ export interface AttributionHandoff {
   has_overlapping_windows: boolean;
   first_threshold_crossing_utc: string | null;
   evidence_notes: string[];
-  matches_naive_baseline?: boolean;
+  matches_naive_baseline?: boolean | null;
 }
 
 export interface NaiveBaseline {
@@ -149,6 +153,9 @@ export interface NaiveBaseline {
 
 export interface AttributionResult {
   excursion_id: string | number;
+  shipment_id?: string | number;
+  attribution_status?: string;
+  selected_handoff_id?: string | number | null;
   excursion: ExcursionEvent;
   ranked_handoffs: AttributionHandoff[];
   top_ranked_handoff: AttributionHandoff | null;
@@ -249,7 +256,8 @@ export interface EvidenceReportData {
     missing_gaps_count: number;
   };
   ranked_handoffs: AttributionHandoff[];
-  naive_baseline_comparison: NaiveBaseline;
+  naive_baseline_comparison?: NaiveBaseline | null;
   data_quality_notes: string[];
   limitations: string[];
+  disclaimer?: string;
 }

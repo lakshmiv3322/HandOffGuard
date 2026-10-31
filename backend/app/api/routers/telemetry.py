@@ -238,7 +238,7 @@ async def get_telemetry_drilldown(
             "exposure_degree_minutes": 0.0,
             "exposure_share_pct": 0.0,
             "attribution_confidence": "low",
-            "confidence_score": 0.5,
+            "confidence_score": None,
             "evidence_notes": [],
         }
 
@@ -268,7 +268,7 @@ async def get_telemetry_drilldown(
                         v["exposure_degree_minutes"] = tot_dm
                         v["exposure_share_pct"] = share
                         v["attribution_confidence"] = "Prototype Ranking" if ev_status == "Unvalidated prototype ranking" else ev_status
-                        v["confidence_score"] = 0.85 if ev_status == "Unvalidated prototype ranking" else 0.2
+                        v["confidence_score"] = None  # Removed uncalibrated numerical values
                         v["evidence_notes"] = [
                             f"Evidence status: {ev_status}.",
                             f"Exposure share: {share}% ({tot_dm:.1f} °C·min).",

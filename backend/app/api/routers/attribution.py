@@ -34,7 +34,7 @@ from app.infrastructure.repositories.base import (
 router = APIRouter(prefix="/api/excursions", tags=["Attribution"])
 
 EXPOSURE_LIMITATION_DISCLAIMER = (
-    "Exposure is estimated from logger observations and stated modelling assumptions (default 600s gap limit). "
+    "Estimated from logger observations and stated modelling assumptions (default 600s gap limit). "
     "Not a determination of product-core temperature, root cause or legal liability. Product disposition remains with the quality team."
 )
 
@@ -64,8 +64,8 @@ async def get_excursion_attribution(
     attribution_service: AttributionService = Depends(get_attribution_service),
 ):
     """
-    Returns the attribution breakdown for an excursion, including ranked handoffs,
-    naive baseline comparison, evidence notes, and coverage status.
+    Returns the attribution breakdown for an excursion, including candidate handoffs,
+    coverage metrics, evidence notes, and objective investigation status.
     Source of truth: Exasol V_EXCURSION_ATTRIBUTION view.
     """
     excursion = await excursion_repo.get_by_id(excursion_id)
@@ -109,6 +109,10 @@ async def get_excursion_attribution(
                 detail=f"No attribution records found in Exasol for excursion {excursion_id}",
             )
 
+        # Check overall excursion evidence status from the dataset
+        primary_ev_status = str(rows[0].get("EVIDENCE_STATUS") or rows[0].get("evidence_status") or "")
+        is_inconclusive = primary_ev_status.startswith("INCONCLUSIVE") or primary_ev_status.startswith("EXCLUDED")
+
         ranked_items: list[AttributionHandoffItem] = []
         for idx, r in enumerate(rows):
             def _k(n: str):
@@ -126,40 +130,57 @@ async def get_excursion_attribution(
             ambiguous_min = float(_k("ambiguous_minutes") or 0.0)
             assigned_loggers = int(_k("assigned_logger_count") or 0)
             win_source = str(_k("window_source") or "ACTUAL")
+            exc_dur = float(_k("exc_duration_minutes") or excursion.duration_minutes or 0.0)
+            unsupported_gap_min = max(0.0, exc_dur - supported_obs - ambiguous_min)
+            obs_readings = int(_k("reading_count") or 0)
 
-            # Confidence score and label based on evidence status
+            # 1. Unexplained numerical confidence values removed; return None unless calibrated
+            conf_score = None
+
             if ev_status == "Unvalidated prototype ranking":
-                conf_score = 0.85
                 conf_label = "Prototype Ranking"
             elif ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA":
-                conf_score = 0.10
                 conf_label = "Inconclusive (Data Gap)"
             elif ev_status == "INCONCLUSIVE_MULTI_LOGGER":
-                conf_score = 0.20
                 conf_label = "Inconclusive (Multi-Logger)"
             elif ev_status == "EXCLUDED_PLANNED_ONLY":
-                conf_score = 0.0
                 conf_label = "Excluded (Planned Only)"
             else:
-                conf_score = 0.50
                 conf_label = ev_status
 
             notes = [
                 f"Evidence status: {ev_status}.",
-                f"Exposure share: {share_pct}% ({tot_dm:.1f} °C·min) restricted to excursion window.",
-                f"Supported observation: {supported_obs:.1f} min | Ambiguous: {ambiguous_min:.1f} min.",
+                f"Observed readings: {obs_readings} | Supported observation: {supported_obs:.1f} min | Unsupported gap: {unsupported_gap_min:.1f} min.",
             ]
+
+            # 4. Separate unavailable exposure from valid zero exposure
+            if ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA" or supported_obs == 0.0:
+                exp_dm = None
+                exp_share = None
+                exp_consumed_pct = None
+                notes.append("Exposure degree-minutes unavailable due to telemetry gaps > 600s. Zero exposure is not inferred.")
+            else:
+                exp_dm = tot_dm
+                exp_share = share_pct
+                exp_consumed_pct = round(
+                    (tot_dm / max(1.0, shipment.product.allowed_excursion_minutes if shipment.product else 120.0)) * 100.0,
+                    1,
+                )
+                notes.append(f"Supported degree-minutes: {tot_dm:.1f} °C·min ({share_pct}% share) restricted to excursion window.")
+
             if win_source == "PLANNED_ONLY":
                 notes.append("Custody window lacks actual timestamps. Excluded from actual custody attribution.")
             if assigned_loggers > 1:
                 notes.append(f"Warning: {assigned_loggers} loggers assigned. Single-logger MVP rule active.")
-            if ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA":
-                notes.append("Warning: Sparse data or gaps > 600s. Zero exposure does not prove thermal safety.")
             if ambiguous_min > 0:
                 notes.append(f"Excluded {ambiguous_min:.1f} min of ambiguous overlapping custody.")
 
+            # 2. For inconclusive cases: no winning rank, show as investigation candidate only
+            assigned_rank = None if is_inconclusive else (idx + 1)
+
             item = AttributionHandoffItem(
-                rank=idx + 1,
+                rank=assigned_rank,
+                is_candidate_only=is_inconclusive,
                 handoff_id=hid,
                 handoff_label=f"{assoc_party} → {to_party} ({htype})",
                 sequence_no=seq,
@@ -167,30 +188,38 @@ async def get_excursion_attribution(
                 from_party=assoc_party,
                 to_party=to_party,
                 location=str(_k("location") or ""),
-                exposure_degree_minutes=tot_dm,
-                exposure_share_pct=share_pct,
-                allowed_excursion_time_consumed_pct=round(
-                    (tot_dm / max(1.0, shipment.product.allowed_excursion_minutes if shipment.product else 120.0)) * 100.0,
-                    1,
-                ),
+                observed_reading_count=obs_readings,
+                supported_observation_minutes=supported_obs,
+                unsupported_gap_minutes=unsupported_gap_min,
+                exposure_degree_minutes=exp_dm,
+                exposure_share_pct=exp_share,
+                allowed_excursion_time_consumed_pct=exp_consumed_pct,
                 confidence_score=conf_score,
                 confidence_label=conf_label,
                 duration_outside_safe_range_minutes=supported_obs,
-                peak_temp_c=float(_k("exc_peak_temp_c") or excursion.peak_temp_c),
-                reading_count=int(_k("reading_count") or 0),
+                peak_temp_c=float(_k("exc_peak_temp_c") or excursion.peak_temp_c),  # Preserved observed peak!
+                reading_count=obs_readings,
                 logger_ids=[str(lg.logger_id) for lg in loggers],
                 clock_skew_corrections=[lg.clock_skew_seconds for lg in loggers],
-                has_missing_gaps=(ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA"),
+                has_missing_gaps=(unsupported_gap_min > 0 or ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA"),
                 has_overlapping_windows=(ambiguous_min > 0),
                 first_threshold_crossing_utc=None,
                 evidence_notes=notes,
-                matches_naive_baseline=False,
+                matches_naive_baseline=None,  # Moved out of customer-facing card
             )
             ranked_items.append(item)
 
-        top_item = ranked_items[0] if ranked_items else None
+        # For insufficient evidence: selected_handoff_id = None, top_ranked_handoff = None
+        if is_inconclusive:
+            selected_hid = None
+            top_item = None
+            attr_status = primary_ev_status
+        else:
+            top_item = ranked_items[0] if ranked_items else None
+            selected_hid = top_item.handoff_id if top_item else None
+            attr_status = "PROTOTYPE_RANKING"
 
-        # Determine naive baseline (first handoff whose window contains excursion start)
+        # Determine naive baseline for internal evaluation reference
         first_crossing_handoff = None
         for h in handoffs:
             if h.window_start_utc <= excursion.started_at_utc < h.window_end_utc:
@@ -210,20 +239,15 @@ async def get_excursion_attribution(
             first_crossing_utc=excursion.started_at_utc.isoformat() if excursion.started_at_utc else None,
             agrees_with_top_ranked=agrees,
             explanation=(
-                f"Naive baseline attributes to initial threshold crossing at {excursion.started_at_utc}. "
-                + (
-                    "Exasol degree-minute attribution agrees with first-crossing custody."
-                    if agrees else
-                    f"However, cumulative degree-minute attribution identifies {top_item.handoff_label if top_item else 'another leg'} as primary contributor."
-                )
+                f"Naive baseline attributes to initial threshold crossing at {excursion.started_at_utc}."
             ),
         )
 
-        if top_item and agrees:
-            top_item.matches_naive_baseline = True
-
         return AttributionResponse(
             excursion_id=excursion.excursion_id,
+            shipment_id=shipment.shipment_id,
+            attribution_status=attr_status,
+            selected_handoff_id=selected_hid,
             excursion=ExcursionResponse.model_validate(excursion),
             ranked_handoffs=ranked_items,
             top_ranked_handoff=top_item,
@@ -263,6 +287,9 @@ async def get_excursion_attribution(
 
     return AttributionResponse(
         excursion_id=excursion.excursion_id,
+        shipment_id=shipment.shipment_id,
+        attribution_status="PROTOTYPE_RANKING" if top_item else "INCONCLUSIVE_INSUFFICIENT_DATA",
+        selected_handoff_id=top_item.handoff_id if top_item else None,
         excursion=ExcursionResponse.model_validate(excursion),
         ranked_handoffs=ranked_items,
         top_ranked_handoff=top_item,
