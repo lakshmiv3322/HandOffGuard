@@ -98,28 +98,74 @@ backend\venv\Scripts\python scripts/seed_demo_scenarios.py
 ## 🚀 Quick Start Guide
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- Docker (for Exasol Personal)
+- **Git**
+- **Python 3.11+**
+- **Node.js 18+** & npm
+- **Docker** (to run Exasol Personal edition)
 
-### 1. Start Exasol Personal via Docker
+---
+
+### Option 1: Docker Compose (All-in-One)
+
+If Docker and Docker Compose are installed:
+```bash
+git clone https://github.com/lakshmiv3322/HandOffGuard.git
+cd HandOffGuard
+docker compose up -d
+```
+- Open application at: **http://localhost:5173**
+- Backend API docs: **http://localhost:8000/docs**
+
+---
+
+### Option 2: Step-by-Step Local Setup (macOS / Linux / Windows)
+
+#### 1. Clone Repository
+```bash
+git clone https://github.com/lakshmiv3322/HandOffGuard.git
+cd HandOffGuard
+```
+
+#### 2. Start Exasol Personal via Docker
 ```bash
 docker run --name exasol_test -p 8563:8563 -d exasol/docker-db:latest
 ```
+*(Wait ~30–45 seconds for Exasol's internal database instance to initialize).*
 
-### 2. Configure Environment
-Copy `.env.example` to `.env` in the repository root and `backend/`:
+#### 3. Set Up Python Virtual Environment
 ```bash
+python -m venv venv
+
+# macOS / Linux:
+source venv/bin/activate
+
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+
+# Windows (Command Prompt):
+venv\Scripts\activate.bat
+
+# Install dependencies:
+pip install -r requirements.txt
+```
+
+#### 4. Configure Environment
+```bash
+# macOS / Linux:
 cp .env.example backend/.env
-```
-*(Default settings connect to Exasol on localhost:8563 with no plaintext secret credentials).*
 
-### 3. Initialize Database & Seed Scenarios
+# Windows (PowerShell):
+Copy-Item .env.example backend\.env
+```
+*(Default settings connect to Exasol on `localhost:8563` with no secret credentials).*
+
+#### 5. Seed Demo Scenarios into Exasol
 ```bash
-backend\venv\Scripts\python scripts/seed_demo_scenarios.py
+python scripts/seed_demo_scenarios.py
 ```
+*Seeds all 3 demo scenarios (dense breach, sparse inconclusive, and ambiguous custody).*
 
-### 4. Start Backend Server
+#### 6. Start Backend Server
 ```bash
 cd backend
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
@@ -127,29 +173,31 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 - API Docs: http://localhost:8000/docs
 - Health Check: http://localhost:8000/health
 
-### 5. Start Frontend UI
+#### 7. Start Frontend UI (In a new terminal)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-- Open application at: http://localhost:5173
+- Open application at: **http://localhost:5173**
 
 ---
 
-## 🧪 Verification & Evaluation Results
+## 🧪 Verification & Evaluation Commands
+
+Run these from the repository root with your virtual environment activated:
 
 ### 1. Exasol Integration Tests (14 Scenarios)
 Executes production migration SQL ([`db/migrations/005_repair_analytics_views.sql`](db/migrations/005_repair_analytics_views.sql)) retargeted against an isolated schema `HANDOFFGUARD_TEST`:
 ```bash
-backend\venv\Scripts\python backend/tests/run_exasol_integration_tests.py
+python backend/tests/run_exasol_integration_tests.py
 ```
 **Result**: **14 / 14 PASS**. Verifies half-open boundaries, clock skew subtraction, 600s gap limits, product thresholds, overlapping custody exclusions, planned-only exclusions, no-reading abstention, multi-logger warnings, and non-extending tail gaps.
 
 ### 2. Synthetic Attribution Evaluation ([`reports/attribution_evaluation.md`](reports/attribution_evaluation.md))
 Evaluates the primary target (*"handoff with largest supported out-of-range exposure within an excursion window"*) against the naive baseline (*"first observed out-of-range reading"*) across 5 held-out synthetic test fixtures:
 ```bash
-backend\venv\Scripts\python backend/evaluation/run_evaluation.py
+python backend/evaluation/run_evaluation.py
 ```
 *Note: Evaluates 5 synthetic unit fixtures to verify algorithmic guardrails; not a real-world field validation claim.*
 
@@ -170,19 +218,37 @@ backend\venv\Scripts\python backend/evaluation/run_evaluation.py
 ### 3. Practical Benchmark: Small-Fixture Comparison ([`reports/benchmark_results.md`](reports/benchmark_results.md))
 Compares Exasol query execution against an equivalent in-process pandas interval join on `SHP-SYNTH-DENSE-01` (301 readings, 3 handoffs):
 ```bash
-backend\venv\Scripts\python scripts/benchmark_exasol_vs_pandas.py
+python scripts/benchmark_exasol_vs_pandas.py
 ```
 - **Mathematical Correctness**: **PASS (0.0000 diff per handoff)**.
 - **Measured Timings (10 Repetitions)**:
-  - **In-process pandas**: Median **11.6 ms** (7.7 ms min, 21.9 ms max).
-  - **Networked Exasol**: Median **112.6 ms** (94.9 ms min, 231.9 ms max).
+  - **In-process pandas**: Median **20.9 ms**.
+  - **Networked Exasol**: Median **108.7 ms**.
   - **Finding**: On this small 301-reading fixture, in-process pandas was faster than Exasol due to loopback network socket IPC and query dispatch overhead dominating small data transfers.
 - **Large-Scale Testing Status**: **NOT COMPLETED**. A benchmark across $\ge 10,000$ shipments was not run due to single-container developer laptop memory and execution limits.
 
 ### 4. End-to-End API Smoke Tests
 ```bash
-backend\venv\Scripts\python backend/tests/test_api_endpoints.py
+python backend/tests/test_api_endpoints.py
 ```
+**Result**: **ALL PASS**. Verifies health, membership counts, exposure status, attribution ranks, null-safety, and telemetry drilldowns across sparse and dense scenarios.
+
+### 5. Automated Security & Credential Audit
+```bash
+python scripts/scan_secrets.py
+```
+**Result**: **ALL PASS**. Scans tracked files, frontend code, and Git history for leaked credentials or secrets.
+
+---
+
+## 📖 Reviewing Without Running Locally
+
+If judges or reviewers prefer to review audit and verification evidence directly in the repository without running Docker:
+
+1. **Release Audit Matrix**: [`RELEASE_AUDIT.md`](RELEASE_AUDIT.md) — 36-point verified release audit.
+2. **Attribution Evaluation Report**: [`reports/attribution_evaluation.md`](reports/attribution_evaluation.md) — Case-by-case evaluation against naive baseline with scoring breakdowns.
+3. **Performance Benchmark Report**: [`reports/benchmark_results.md`](reports/benchmark_results.md) — Exasol vs pandas small-fixture timing, correctness checks, and scope reconciliation.
+4. **Offline Mode**: HandoffGuard can also run without Docker using SQLite by setting `DATABASE_ENGINE=sqlite` in `.env`.
 **Result**: **ALL PASS**. Verifies health, membership counts, exposure status, attribution ranks, null-safety, and telemetry drilldowns across sparse and dense scenarios.
 
 ---

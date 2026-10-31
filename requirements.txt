@@ -1,0 +1,2 @@
+# HandoffGuard Python Dependencies
+-r backend/requirements.txt
