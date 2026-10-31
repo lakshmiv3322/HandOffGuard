@@ -1,0 +1,52 @@
+{
+  "_note": "Synthetic evaluation ground truth. NEVER expose to production attribution queries. Used only by run_evaluation.py to score algorithm correctness against held-out fixtures.",
+  "_label": "Synthetic evaluation — not field validation.",
+  "cases": [
+    {
+      "case_id": "EVAL-01-SINGLE-HANDOFF",
+      "description": "Clear single-handoff exposure. All readings during excursion fall in H2. No other handoff overlaps.",
+      "expected_primary_handoff": "EH2",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "naive_baseline_first_oor_handoff": "EH2",
+      "naive_matches_primary": true
+    },
+    {
+      "case_id": "EVAL-02-SPANNING",
+      "description": "Excursion spans two handoffs. H2 holds 75% of out-of-range exposure, H3 holds 25%. Primary target should select H2.",
+      "expected_primary_handoff": "FH2",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "naive_baseline_first_oor_handoff": "FH2",
+      "naive_matches_primary": true
+    },
+    {
+      "case_id": "EVAL-03-TIED",
+      "description": "Two handoffs have exactly equal supported out-of-range exposure. Attribution rank 1 is shared — no unique winner.",
+      "expected_primary_handoff": null,
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "TIED_NO_UNIQUE_WINNER",
+      "naive_baseline_first_oor_handoff": "GH1",
+      "naive_matches_primary": null
+    },
+    {
+      "case_id": "EVAL-04-CLOCK-OFFSET",
+      "description": "Logger has +300s clock skew. Without correction, readings land in wrong handoff. With correction, H2 is correctly identified.",
+      "expected_primary_handoff": "KH2",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "naive_baseline_first_oor_handoff": "KH1",
+      "naive_matches_primary": false,
+      "naive_note": "Naive baseline uses uncorrected timestamps and lands in wrong handoff"
+    },
+    {
+      "case_id": "EVAL-05-MISSING-READINGS",
+      "description": "Only two readings >600s apart. All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA.",
+      "expected_primary_handoff": null,
+      "expected_evidence_status": "INCONCLUSIVE_INSUFFICIENT_DATA",
+      "expected_outcome": "INCONCLUSIVE",
+      "naive_baseline_first_oor_handoff": "MH1",
+      "naive_matches_primary": null
+    }
+  ]
+}

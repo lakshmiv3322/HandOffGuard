@@ -1,0 +1,170 @@
+{
+  "_label": "Synthetic evaluation -- not field validation.",
+  "_note": "Primary target: handoff with the largest supported out-of-range exposure within an excursion window. This is NOT root-cause identification.",
+  "generated_at": "2026-10-31T05:51:26.712134Z",
+  "summary": {
+    "total_cases": 5,
+    "primary_correct": 5,
+    "naive_correct": 3,
+    "primary_accuracy_pct": 100.0,
+    "naive_accuracy_pct": 60.0
+  },
+  "cases": [
+    {
+      "case_id": "EVAL-01-SINGLE-HANDOFF",
+      "case_name": "Clear Single-Handoff Exposure",
+      "description": "Clear single-handoff exposure. All readings during excursion fall in H2. No other handoff overlaps.",
+      "excursion_id": "EXC-E01",
+      "expected_primary_handoff": "EH2",
+      "actual_primary_handoff": "EH2",
+      "actual_evidence_status": "Unvalidated prototype ranking",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "actual_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "primary_correct": true,
+      "top_exposure_dm": 90.0,
+      "naive_baseline_handoff": "EH2",
+      "naive_expected_handoff": "EH2",
+      "naive_correct": true,
+      "naive_matches_primary_expected": true,
+      "attribution_rows": [
+        {
+          "handoff_id": "EH2",
+          "rank": 1,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 50.0,
+          "handoff_total_dm": 90.0,
+          "reading_count": 6
+        }
+      ]
+    },
+    {
+      "case_id": "EVAL-02-SPANNING",
+      "case_name": "Exposure Spanning Two Handoffs",
+      "description": "Excursion spans two handoffs. H2 holds 75% of out-of-range exposure, H3 holds 25%. Primary target should select H2.",
+      "excursion_id": "EXC-E02",
+      "expected_primary_handoff": "FH2",
+      "actual_primary_handoff": "FH2",
+      "actual_evidence_status": "Unvalidated prototype ranking",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "actual_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "primary_correct": true,
+      "top_exposure_dm": 120.0,
+      "naive_baseline_handoff": "FH1",
+      "naive_expected_handoff": "FH2",
+      "naive_correct": false,
+      "naive_matches_primary_expected": true,
+      "attribution_rows": [
+        {
+          "handoff_id": "FH2",
+          "rank": 1,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 60.0,
+          "handoff_total_dm": 120.0,
+          "reading_count": 6
+        },
+        {
+          "handoff_id": "FH3",
+          "rank": 2,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 20.0,
+          "handoff_total_dm": 40.0,
+          "reading_count": 2
+        }
+      ]
+    },
+    {
+      "case_id": "EVAL-03-TIED",
+      "case_name": "Tied Exposure \u2014 No Unique Winner",
+      "description": "Two handoffs have exactly equal supported out-of-range exposure. Attribution rank 1 is shared \u2014 no unique winner.",
+      "excursion_id": "EXC-E03",
+      "expected_primary_handoff": null,
+      "actual_primary_handoff": null,
+      "actual_evidence_status": "Unvalidated prototype ranking",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "TIED_NO_UNIQUE_WINNER",
+      "actual_outcome": "TIED_NO_UNIQUE_WINNER",
+      "primary_correct": true,
+      "top_exposure_dm": 120.0,
+      "naive_baseline_handoff": "GH1",
+      "naive_expected_handoff": "GH1",
+      "naive_correct": true,
+      "naive_matches_primary_expected": null,
+      "attribution_rows": [
+        {
+          "handoff_id": "GH1",
+          "rank": 1,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 60.0,
+          "handoff_total_dm": 120.0,
+          "reading_count": 6
+        },
+        {
+          "handoff_id": "GH2",
+          "rank": 1,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 60.0,
+          "handoff_total_dm": 120.0,
+          "reading_count": 6
+        }
+      ]
+    },
+    {
+      "case_id": "EVAL-04-CLOCK-OFFSET",
+      "case_name": "Clock Offset +300s Correction",
+      "description": "Logger has +300s clock skew. Without correction, readings land in wrong handoff. With correction, H2 is correctly identified.",
+      "excursion_id": "EXC-E04",
+      "expected_primary_handoff": "KH2",
+      "actual_primary_handoff": "KH2",
+      "actual_evidence_status": "Unvalidated prototype ranking",
+      "expected_evidence_status": "Unvalidated prototype ranking",
+      "expected_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "actual_outcome": "PRIMARY_MATCHES_GROUND_TRUTH",
+      "primary_correct": true,
+      "top_exposure_dm": 70.0,
+      "naive_baseline_handoff": "KH2",
+      "naive_expected_handoff": "KH1",
+      "naive_correct": false,
+      "naive_matches_primary_expected": false,
+      "attribution_rows": [
+        {
+          "handoff_id": "KH2",
+          "rank": 1,
+          "evidence_status": "Unvalidated prototype ranking",
+          "supported_obs_min": 35.0,
+          "handoff_total_dm": 70.0,
+          "reading_count": 4
+        }
+      ]
+    },
+    {
+      "case_id": "EVAL-05-MISSING-READINGS",
+      "case_name": "Missing Readings \u2014 Inconclusive",
+      "description": "Only two readings >600s apart. All segments unsupported. Should return INCONCLUSIVE_INSUFFICIENT_DATA.",
+      "excursion_id": "EXC-E05",
+      "expected_primary_handoff": null,
+      "actual_primary_handoff": null,
+      "actual_evidence_status": "INCONCLUSIVE_INSUFFICIENT_DATA",
+      "expected_evidence_status": "INCONCLUSIVE_INSUFFICIENT_DATA",
+      "expected_outcome": "INCONCLUSIVE",
+      "actual_outcome": "INCONCLUSIVE",
+      "primary_correct": true,
+      "top_exposure_dm": null,
+      "naive_baseline_handoff": "MH1",
+      "naive_expected_handoff": "MH1",
+      "naive_correct": true,
+      "naive_matches_primary_expected": null,
+      "attribution_rows": [
+        {
+          "handoff_id": "MH1",
+          "rank": 1,
+          "evidence_status": "INCONCLUSIVE_INSUFFICIENT_DATA",
+          "supported_obs_min": 0.0,
+          "handoff_total_dm": 0.0,
+          "reading_count": 0
+        }
+      ]
+    }
+  ]
+}
