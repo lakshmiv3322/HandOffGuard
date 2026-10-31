@@ -134,6 +134,31 @@ def init_db(host, port, user, password, target_schema):
         CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    c.execute(f"""
+    CREATE TABLE IF NOT EXISTS {target_schema}.ATTRIBUTION_RESULTS (
+        EXCURSION_ID VARCHAR(50),
+        HANDOFF_ID VARCHAR(50),
+        EXPOSURE_DEGREE_MINUTES DOUBLE,
+        EXPOSURE_SHARE_PCT DOUBLE,
+        CONFIDENCE_SCORE DOUBLE,
+        CONFIDENCE_LABEL VARCHAR(100),
+        EVIDENCE_JSON VARCHAR(2000),
+        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute(f"""
+    CREATE TABLE IF NOT EXISTS {target_schema}.PREVENTION_SUGGESTIONS (
+        SHIPMENT_ID VARCHAR(50),
+        HANDOFF_ID VARCHAR(50),
+        RISK_SCORE DOUBLE,
+        SUGGESTION VARCHAR(500),
+        RATIONALE VARCHAR(1000),
+        PROTOTYPE_FLAG BOOLEAN,
+        CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
     print("Base tables verified.")
 
     # 3. Create Analytical Views from 005_repair_analytics_views.sql

@@ -36,7 +36,7 @@ class CustodyTimelineResponse(BaseModel):
     loggers: list[LoggerResponse]
     readings: list[TemperatureReadingResponse]
     excursion_intervals: list[ExcursionResponse]
-    suspected_handoff_id: Optional[int] = None
+    suspected_handoff_id: Optional[str | int] = None
     data_quality_summary: DataQualitySummary
     clock_skew_corrections: list[ClockSkewCorrection]
     unassigned_intervals: list[UnassignedIntervalResponse]

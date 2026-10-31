@@ -36,7 +36,7 @@ class TimelineService:
         loggers: list[Logger],
         readings_by_logger: dict[int, list[TemperatureReading]],
         excursions: list[ExcursionEvent],
-        suspected_handoff_id: Optional[int] = None,
+        suspected_handoff_id: Optional[str | int] = None,
         max_points_per_logger: int = MAX_CHART_POINTS_PER_LOGGER,
     ) -> dict:
         """

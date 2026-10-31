@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict
 class TemperatureReadingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    reading_id: int
-    logger_id: int
+    reading_id: str | int
+    logger_id: str | int
     recorded_at_utc: datetime
     temperature_c: float
     humidity_pct: Optional[float] = None

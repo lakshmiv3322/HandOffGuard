@@ -1,5 +1,5 @@
 {
-  "benchmark_date": "2026-10-30T15:22:07.407943+00:00",
+  "benchmark_date": "2026-10-31T09:34:59.270288+00:00",
   "scale": {
     "readings_row_count": 100000,
     "shipments_count": 100,
@@ -26,8 +26,8 @@
       "status": "completed",
       "rows_processed": 100000,
       "rows_matched": 85000,
-      "execution_time_seconds": 0.5076,
-      "throughput_rows_per_second": 196987.0,
+      "execution_time_seconds": 1.0721,
+      "throughput_rows_per_second": 93277.0,
       "query": "SELECT\n            r.reading_id,\n            r.logger_id,\n            r.reading_at_utc,\n            r.temperature_c,\n            ld.assigned_shipment_id AS shipment_id,\n            h.handoff_id,\n            h.sequence_no,\n            h.handoff_type,\n            h.from_party,\n            h.to_party,\n            CASE\n                WHEN r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc THEN 'matched'\n                ELSE 'matched_with_skew'\n            END AS membership_status\n        FROM logger_readings r\n        JOIN logger_devices ld ON r.logger_id = ld.logger_id\n        JOIN handoffs h\n            ON h.shipment_id = ld.assigned_shipment_id\n            AND r.reading_at_utc BETWEEN datetime(h.window_start_utc, '-120 seconds')\n                                    AND datetime(h.window_end_utc, '+120 seconds');"
     },
     {
@@ -40,7 +40,7 @@
       "engine": "Exasol Personal (Columnar MPP Engine - Baseline Projected)",
       "available": true,
       "status": "projected",
-      "connection_error": "\n(\n    message     =>  Could not connect to Exasol: [WinError 10013] An attempt was made to access a socket in a way forbidden by its access permissions\n    dsn         =>  localhost:8563\n    user        =>  sys\n    schema      =>  \n    session_id  =>  \n)\n",
+      "connection_error": "\n(\n    message     =>  object H.WINDOW_START_UTC not found [line 20, column 54] (Session: 1880557405949853696)\n    dsn         =>  localhost:8563\n    user        =>  sys\n    schema      =>  HANDOFFGUARD\n    session_id  =>  1880557405949853696\n    code        =>  42000\n    query       =>  SELECT\n            r.reading_id,\n            r.logger_id,\n            r.reading_at_utc,\n            r.temperature_c,\n            ld.assigned_shipment_id AS shipment_id,\n            h.handoff_id,\n            h.sequence_no,\n            h.handoff_type,\n            h.from_party,\n            h.to_party,\n            CASE\n                WHEN r.reading_at_utc BETWEEN h.window_start_utc AND h.window_end_utc THEN 'matched'\n                ELSE 'matched_with_skew'\n            END AS membership_status\n        FROM HANDOFFGUARD.logger_readings r\n        JOIN HANDOFFGUARD.logger_devices ld ON r.logger_id = ld.logger_id\n        JOIN HANDOFFGUARD.handoffs h\n            ON h.shipment_id = ld.assigned_shipment_id\n            AND r.reading_at_utc BETWEEN ADD_SECONDS(h.window_start_utc, -120)\n                                    AND ADD_SECONDS(h.window_end_utc, 120)\n)\n",
       "rows_processed": 100000,
       "rows_matched": 98000,
       "execution_time_seconds": 0.082,

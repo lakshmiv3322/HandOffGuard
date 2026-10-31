@@ -22,7 +22,7 @@ class ProductResponse(BaseModel):
 class ShipmentListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str | int
+    id: Optional[str | int] = None
     shipment_id: str | int
     shipment_code: str
     product_name: str
@@ -39,7 +39,7 @@ class ShipmentListItem(BaseModel):
 class ShipmentDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: str | int
+    id: Optional[str | int] = None
     shipment_id: str | int
     shipment_code: str
     product: Optional[ProductResponse] = None

@@ -222,7 +222,7 @@ async def get_custody_timeline(
     for lg in loggers:
         readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
 
-    suspected_id: Optional[int] = None
+    suspected_id: Optional[str | int] = None
     if excursions:
         attrs = await attribution_repo.get_by_excursion(excursions[0].excursion_id)
         if attrs:
@@ -248,6 +248,7 @@ async def get_custody_timeline(
     )
 
     detail_obj = ShipmentDetail(
+        id=shipment.shipment_id,
         shipment_id=shipment.shipment_id,
         shipment_code=shipment.shipment_code,
         product=ProductResponse.model_validate(prod),

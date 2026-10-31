@@ -188,8 +188,8 @@ class AttributionResult:
     that is considered responsible for some portion of the exposure.
     """
 
-    excursion_id: int
-    handoff_id: int
+    excursion_id: str | int
+    handoff_id: str | int
     exposure_degree_minutes: float
     exposure_share_pct: float
     confidence_score: float
