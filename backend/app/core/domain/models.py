@@ -206,8 +206,8 @@ class AttributionResult:
 class PreventionSuggestion:
     """A proactive risk-reduction suggestion for an upcoming shipment handoff."""
 
-    shipment_id: int
-    handoff_id: int
+    shipment_id: str | int
+    handoff_id: str | int
     risk_score: float
     suggestion: str
     rationale: str

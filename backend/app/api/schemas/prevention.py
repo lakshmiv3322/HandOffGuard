@@ -10,8 +10,8 @@ from app.api.schemas.shipment import ShipmentListItem
 class PreventionSuggestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    shipment_id: int
-    handoff_id: int
+    shipment_id: str | int
+    handoff_id: str | int
     risk_score: float
     suggestion: str
     rationale: str

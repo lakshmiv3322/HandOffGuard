@@ -202,3 +202,30 @@ async def get_query_insights(
             "disclaimer": "Measured directly on the running backend. No simulated or inflated figures.",
         },
     }
+
+
+@router.get("/benchmark-results")
+async def get_benchmark_results() -> Dict[str, Any]:
+    """
+    Returns the reproducible multi-engine interval join benchmark results
+    for the /exasol/benchmark UI page.
+    """
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.abspath(os.path.join(current_dir, "..", "..", "..", ".."))
+    json_path = os.path.join(repo_root, "reports", "interval_join_benchmark.json")
+
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Error reading benchmark results: {str(e)}",
+            )
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Benchmark report not found. Run 'npm run benchmark:interval-join' to generate it.",
+    )
+

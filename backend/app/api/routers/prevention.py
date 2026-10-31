@@ -68,6 +68,7 @@ async def get_upcoming_prevention(
     )
 
     shipment_item = ShipmentListItem(
+        id=str(target_shipment.shipment_id),
         shipment_id=target_shipment.shipment_id,
         shipment_code=target_shipment.shipment_code,
         product_name=prod.name,
@@ -92,7 +93,7 @@ async def get_upcoming_prevention(
 
 @router.get("/shipments/{shipment_id}", response_model=PreventionResponse)
 async def get_shipment_prevention(
-    shipment_id: int,
+    shipment_id: str | int,
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),
     logger_repo: AbstractLoggerRepository = Depends(get_logger_repo),
@@ -126,6 +127,7 @@ async def get_shipment_prevention(
     )
 
     shipment_item = ShipmentListItem(
+        id=str(shipment.shipment_id),
         shipment_id=shipment.shipment_id,
         shipment_code=shipment.shipment_code,
         product_name=prod.name,
