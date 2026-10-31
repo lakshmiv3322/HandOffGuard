@@ -82,11 +82,11 @@ export const MembershipTable: React.FC<Props> = ({ shipmentId }) => {
         {/* Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           {[
-            { id: 'all', label: 'All', count: data?.counts.total },
-            { id: 'matched', label: 'Matched', count: data?.counts.matched },
-            { id: 'matched_with_skew', label: 'Skew-Aligned', count: data?.counts.matched_with_skew },
-            { id: 'ambiguous', label: 'Ambiguous', count: data?.counts.ambiguous },
-            { id: 'unmatched', label: 'Unmatched', count: data?.counts.unmatched },
+            { id: 'all', label: 'All', count: data?.counts?.total },
+            { id: 'matched', label: 'Matched', count: data?.counts?.matched },
+            { id: 'matched_with_skew', label: 'Skew-Aligned', count: data?.counts?.matched_with_skew },
+            { id: 'ambiguous', label: 'Ambiguous', count: data?.counts?.ambiguous },
+            { id: 'unmatched', label: 'Unmatched', count: data?.counts?.unmatched },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -107,7 +107,7 @@ export const MembershipTable: React.FC<Props> = ({ shipmentId }) => {
         <div className="py-8 text-center text-xs text-slate-400">Loading interval join membership from Exasol...</div>
       ) : error ? (
         <div className="py-4 text-xs text-rose-600">{error}</div>
-      ) : !data || data.items.length === 0 ? (
+      ) : !data || !data.items || data.items.length === 0 ? (
         <div className="py-8 text-center text-xs text-slate-400">No telemetry readings match the current filter.</div>
       ) : (
         <div className="overflow-x-auto max-h-96 border border-slate-100 rounded-lg">
@@ -125,7 +125,7 @@ export const MembershipTable: React.FC<Props> = ({ shipmentId }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-mono">
-              {data.items.map((row) => {
+              {(data.items ?? []).map((row) => {
                 return (
                   <tr
                     key={row.reading_id}
@@ -173,9 +173,11 @@ export const MembershipTable: React.FC<Props> = ({ shipmentId }) => {
         </div>
       )}
 
-      <div className="pt-2 text-[11px] text-slate-400 italic">
-        * {data?.disclaimer}
-      </div>
+      {data?.disclaimer && (
+        <div className="pt-2 text-[11px] text-slate-400 italic">
+          * {data.disclaimer}
+        </div>
+      )}
     </div>
   );
 };
