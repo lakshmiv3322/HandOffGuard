@@ -14,13 +14,13 @@ Biologics, vaccines, and cell therapies require strict thermal maintenance (e.g.
 4. Regional Hub / Depot
 5. Last-Mile Delivery Courier
 
-When a shipment arrives with an irreversible thermal excursion, parties dispute responsibility: the airline blames ground handling; ground handling blames the line-haul carrier.
+When a shipment arrives with a detected thermal excursion, parties dispute responsibility: the airline blames ground handling; ground handling blames the line-haul carrier.
 
 **The Fundamental Data Challenge:**
 > **IoT temperature loggers do not know who owns the package.**  
 > Raw telemetry records contain only logger timestamps and temperature observations. **There is NO handoff ID or custody tag in sensor readings.**
 
-**HandoffGuard** solves this by leveraging **Exasol Personal's in-memory columnar engine** to execute high-throughput, non-equi interval joins across dense sensor observations and custody transfer logs, calculating cumulative thermal exposure in **degree-minutes** to attribute thermal breaches with defensible, transparent evidence.
+**HandoffGuard** solves this by leveraging **Exasol Personal's in-memory columnar engine** to execute non-equi interval joins across dense sensor observations and custody transfer logs, calculating cumulative thermal exposure in **degree-minutes** to attribute thermal breaches with defensible, transparent evidence.
 
 > [!IMPORTANT]
 > **Mandatory Quality Investigation Disclaimer:**  
@@ -90,7 +90,7 @@ HandoffGuard includes three deterministic live scenarios demonstrating distinct 
 
 Seed or re-verify all 3 demo scenarios:
 ```bash
-backend\venv\Scripts\python scripts/seed_demo_scenarios.py
+python scripts/seed_demo_scenarios.py
 ```
 
 ---
@@ -157,13 +157,18 @@ cp .env.example backend/.env
 # Windows (PowerShell):
 Copy-Item .env.example backend\.env
 ```
-*(Default settings connect to Exasol on `localhost:8563` with no secret credentials).*
+*(The backend reads `backend/.env`. Default settings connect to Exasol on `localhost:8563` with no secret credentials. The root `.env` is not loaded by the application.)*
 
-#### 5. Seed Demo Scenarios into Exasol
+#### 5. Initialize Schema and Seed Demo Scenarios into Exasol
 ```bash
+# 5a. Create schema + tables + analytical views in a fresh Exasol instance:
+python scripts/init_exasol_db.py
+
+# 5b. Seed all 3 demonstration scenarios (calls init automatically if schema is missing):
 python scripts/seed_demo_scenarios.py
 ```
 *Seeds all 3 demo scenarios (dense breach, sparse inconclusive, and ambiguous custody).*
+*`seed_demo_scenarios.py` auto-initializes the schema if the analytical views are missing; running `init_exasol_db.py` separately first is still recommended for clarity.*
 
 #### 6. Start Backend Server
 ```bash
@@ -225,7 +230,7 @@ python scripts/benchmark_exasol_vs_pandas.py
   - **In-process pandas**: Median **20.9 ms**.
   - **Networked Exasol**: Median **108.7 ms**.
   - **Finding**: On this small 301-reading fixture, in-process pandas was faster than Exasol due to loopback network socket IPC and query dispatch overhead dominating small data transfers.
-- **Large-Scale Testing Status**: **NOT COMPLETED**. A benchmark across $\ge 10,000$ shipments was not run due to single-container developer laptop memory and execution limits.
+- **Large-Scale Testing Status**: **NOT COMPLETED**. A benchmark across >= 10,000 shipments was not run due to single-container developer laptop memory and execution limits.
 
 ### 4. End-to-End API Smoke Tests
 ```bash
@@ -248,16 +253,15 @@ If judges or reviewers prefer to review audit and verification evidence directly
 1. **Release Audit Matrix**: [`RELEASE_AUDIT.md`](RELEASE_AUDIT.md) — 36-point verified release audit.
 2. **Attribution Evaluation Report**: [`reports/attribution_evaluation.md`](reports/attribution_evaluation.md) — Case-by-case evaluation against naive baseline with scoring breakdowns.
 3. **Performance Benchmark Report**: [`reports/benchmark_results.md`](reports/benchmark_results.md) — Exasol vs pandas small-fixture timing, correctness checks, and scope reconciliation.
-4. **Offline Mode**: HandoffGuard can also run without Docker using SQLite by setting `DATABASE_ENGINE=sqlite` in `.env`.
-**Result**: **ALL PASS**. Verifies health, membership counts, exposure status, attribution ranks, null-safety, and telemetry drilldowns across sparse and dense scenarios.
+4. **Offline / Development Mode**: HandoffGuard can run without Docker using SQLite by setting `DATABASE_ENGINE=sqlite` in `backend/.env`. *This development-only fallback does not execute Exasol analytical views; results will differ from the production Exasol path.*
 
 ---
 
 ## 🖨 Printable Evidence Reports
 
-HandoffGuard generates audit-grade, print-friendly evidence reports for quality and regulatory review:
+HandoffGuard generates print-friendly evidence reports for quality and regulatory review:
 - Navigate to any excursion attribution view (e.g. `SHP-SYNTH-DENSE-01` / `EXC-SYNTH-01`).
-- Click **"View Official Evidence Audit Report"**.
+- Click **"View Evidence Report"**.
 - Click **"Print Report (PDF)"** or press `Ctrl+P`.
 - All navigation and interactive controls automatically hide via `@media print` CSS rules, producing clean audit documentation.
 

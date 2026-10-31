@@ -161,7 +161,7 @@ export function EvidenceReportPage() {
         <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs space-y-1">
           <p className="font-bold text-slate-800">Custody Attribution Methodology</p>
           <p className="text-slate-600">
-            Attribution is derived strictly via dynamic time-interval joins intersecting supported sensor telemetry (segments &le; 600s) with official custody windows and excursion boundaries.
+            Attribution is derived strictly via dynamic time-interval joins intersecting supported sensor telemetry (segments &le; 600s) with recorded custody windows and excursion boundaries.
           </p>
           <p className="text-slate-500 italic pt-1">
             {disclaimer}
