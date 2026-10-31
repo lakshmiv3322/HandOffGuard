@@ -438,7 +438,7 @@ def write_md_report(results, summary, output_path):
         f"| **Unique-Winner Accuracy** | **{summary['unique_winner_accuracy_pct']:.1f}%** ({summary['unique_winner_correct']}/{summary['unique_winner_total']}) | {summary['naive_unique_winner_accuracy_pct']:.1f}% ({summary['naive_unique_winner_correct']}/{summary['unique_winner_total']}) | Cases with a single dominant responsible custody segment (EVAL-01, 02, 04) |",
         f"| **Tie Handling** | **{summary['tie_handling_pct']:.1f}%** ({summary['tie_correct']}/{summary['tie_total']}) | {summary['naive_tie_pct']:.1f}% (0/1) | Refusal to crown an arbitrary winner when exposure is exactly equal (EVAL-03) |",
         f"| **Insufficient-Data Abstention** | **{summary['abstention_pct']:.1f}%** ({summary['abstention_correct']}/{summary['abstention_total']}) | {summary['naive_abstention_pct']:.1f}% (0/1) | Emitting INCONCLUSIVE when gaps exceed 600s rather than guessing (EVAL-05) |",
-        f"| **Decision Coverage** | **{summary['decision_coverage_pct']:.1f}%** ({summary['decision_coverage_count']}/{summary['total_cases']}) | {summary['naive_decision_coverage_pct']:.1f}% | Taking appropriate action (attributing when evidence suffices, abstaining when not) |",
+        f"| **Decision Coverage** | **{summary['decision_coverage_pct']:.1f}%** ({summary['decision_coverage_count']}/{summary['total_cases']}) | {summary['naive_decision_coverage_pct']:.1f}% ({summary['naive_decision_coverage_count']}/{summary['total_cases']}) | Unique selections / all cases (primary abstains on ties and gaps; naive blindly crowns a winner) |",
         f"| **Overall Fixture Outcomes** | **{summary['primary_accuracy_pct']:.1f}%** ({summary['primary_correct']}/{summary['total_cases']}) | {summary['naive_accuracy_pct']:.1f}% ({summary['naive_correct']}/{summary['total_cases']}) | All 5 synthetic edge-case fixtures |",
         "",
         "> *Note on Naive Baseline:* Naive baseline assigns custody based solely on the handoff containing the first observed "
@@ -603,8 +603,9 @@ def main():
         "abstention_correct": abs_correct,
         "abstention_pct": round(abs_correct / abs_total * 100, 1) if abs_total else 0,
         "naive_abstention_pct": round(naive_abs_correct / abs_total * 100, 1) if abs_total else 0,
-        "decision_coverage_count": total,
-        "decision_coverage_pct": 100.0,
+        "decision_coverage_count": uw_total,
+        "decision_coverage_pct": round(uw_total / total * 100, 1),
+        "naive_decision_coverage_count": total,
         "naive_decision_coverage_pct": 100.0,
     }
 

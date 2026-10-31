@@ -1,7 +1,7 @@
 {
   "_label": "Synthetic unit evaluation -- not real-world field validation.",
   "_scope_note": "These 5 fixtures test algorithmic boundary behaviors in synthetic scenarios: dominant exposure selection, spanning handoffs, tie detection, clock offset correction, and insufficient-data abstention. They do NOT imply real-world supply-chain validation.",
-  "generated_at": "2026-10-31T06:56:24.823434+00:00",
+  "generated_at": "2026-10-31T07:15:57.621048+00:00",
   "summary": {
     "total_cases": 5,
     "primary_correct": 5,
@@ -21,8 +21,9 @@
     "abstention_correct": 1,
     "abstention_pct": 100.0,
     "naive_abstention_pct": 0.0,
-    "decision_coverage_count": 5,
-    "decision_coverage_pct": 100.0,
+    "decision_coverage_count": 3,
+    "decision_coverage_pct": 60.0,
+    "naive_decision_coverage_count": 5,
     "naive_decision_coverage_pct": 100.0
   },
   "cases": [

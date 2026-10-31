@@ -4,7 +4,7 @@
 > **Result**: Preserves the measured empirical finding that **in-process pandas was faster than networked Exasol on this small fixture** (median 11.6 ms vs 108.3 ms) due to loopback network round-trip and query dispatch overhead dominating small datasets.  
 > **Large-Scale Testing Status**: **NOT COMPLETED** (requires distributed multi-node infrastructure beyond single-container developer laptop).
 
-Generated: 2026-10-31 06:59 UTC
+Generated: 2026-10-31 07:18 UTC
 
 ---
 
@@ -42,8 +42,8 @@ Both implementations agree within 0.01 °C·min tolerance: **PASS**
 
 | Engine | Execution Mode | Median (ms) | Min (ms) | Max (ms) | Relative Speed |
 |---|---|---|---|---|---|
-| **pandas** | In-process Python / NumPy | **16.4 ms** | 13.1 ms | 20.4 ms | **Baseline (1.0x)** |
-| **Exasol** | Networked query + fetch over loopback | **296.8 ms** | 153.0 ms | 500.6 ms | ~18.1x slower |
+| **pandas** | In-process Python / NumPy | **20.9 ms** | 15.8 ms | 25.5 ms | **Baseline (1.0x)** |
+| **Exasol** | Networked query + fetch over loopback | **108.7 ms** | 84.1 ms | 184.9 ms | ~5.2x slower |
 
 ### Analysis of Small-Fixture Timing
 - At small data volumes (301 rows), Exasol timing is dominated by network protocol handshakes, query compilation/optimization, and cursor fetching over loopback TCP (~80–120 ms).
@@ -54,14 +54,15 @@ Both implementations agree within 0.01 °C·min tolerance: **PASS**
 
 ## Reconciling Degree-Minute Scopes (281.20 vs 289.12)
 
-A critical distinction exists between whole-handoff exposure and excursion-restricted attribution:
+A critical distinction exists between the **selected excursion investigation window** and the **full sensor threshold breach**:
 
-1. **Whole-Handoff Thermal Exposure (`V_HANDOFF_THERMAL_EXPOSURE` / Exposure API)**:
-   - Evaluates the **entire 60-minute custody window** of Handoff 2 (`10:00:00` to `11:00:00 UTC`).
-   - Thermal exposure above safe limit (8.0°C): **289.12 °C·min**.
-2. **Excursion-Restricted Attribution (`V_EXCURSION_ATTRIBUTION` / Attribution API)**:
-   - Evaluates strictly the intersection of Handoff 2 and Excursion `EXC-SYNTH-01` (`10:10:00` to `10:55:00 UTC`, **45.0 minutes**).
+1. **Selected Excursion Investigation Window (`V_EXCURSION_ATTRIBUTION` / Attribution API)**:
+   - Evaluates strictly the intersection of Handoff 2 and the investigator-defined excursion window `EXC-SYNTH-01` (`10:10:00` to `10:55:00 UTC`, **45.0 minutes**).
    - Excursion-restricted exposure: **281.20 °C·min**.
+2. **Full Sensor Threshold Breach (`V_HANDOFF_THERMAL_EXPOSURE` / Exposure API)**:
+   - Evaluates the **entire 60-minute custody window** of Handoff 2 (`10:00:00` to `11:00:00 UTC`), capturing all readings where temperature exceeded 8.0°C.
+   - The logger recorded breach temperatures from `10:10:00` until `10:57:00 UTC` (48 breach readings), returning below 8.0°C at `10:58:00 UTC`.
+   - Total thermal exposure above safe limit (8.0°C) across the custody window: **289.12 °C·min**.
 3. **Reconciliation**:
    - The 7.92 °C·min difference represents 3 post-excursion cooldown minutes in Handoff 2 (`10:55:00` to `10:58:00 UTC`) before temperature dropped back below 8.0°C:
      - 10:55 UTC: 12.00°C - 8.0 = 4.00 °C·min

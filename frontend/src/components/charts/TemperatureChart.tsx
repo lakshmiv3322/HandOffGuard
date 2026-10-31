@@ -117,8 +117,27 @@ export function TemperatureChart({
 
   const chartData = Array.from(timeMap.values()).sort((a, b) => a.ts - b.ts);
 
+  // Insert line breaks (null readings) across unsupported gaps (> 600s)
+  // so telemetry gaps are not falsely connected as continuous observations
+  const GAP_THRESHOLD_MS = 600 * 1000;
+  const withGaps: ChartPoint[] = [];
+  for (let i = 0; i < chartData.length; i++) {
+    const curr = chartData[i];
+    if (i > 0) {
+      const prev = chartData[i - 1];
+      if (curr.ts - prev.ts > GAP_THRESHOLD_MS) {
+        const gapBreak: ChartPoint = { ts: prev.ts + 1000 };
+        loggerIds.forEach((lid) => {
+          gapBreak[lid] = null;
+        });
+        withGaps.push(gapBreak);
+      }
+    }
+    withGaps.push(curr);
+  }
+
   // Pad all logger columns (null for missing timestamps to allow line breaks)
-  const filled = chartData.map((point) => {
+  const filled = withGaps.map((point) => {
     const obj: ChartPoint = { ts: point.ts };
     loggerIds.forEach((lid) => {
       obj[lid] = point[lid] !== undefined ? point[lid] : null;
@@ -238,7 +257,7 @@ export function TemperatureChart({
               dataKey={String(lid)}
               name={String(lid)}
               stroke={LOGGER_COLORS[idx % LOGGER_COLORS.length]}
-              dot={false}
+              dot={{ r: 3, strokeWidth: 1 }}
               activeDot={{ r: 4 }}
               strokeWidth={1.8}
               connectNulls={false}

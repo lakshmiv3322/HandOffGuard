@@ -158,6 +158,7 @@ backend\venv\Scripts\python backend/evaluation/run_evaluation.py
 | **Unique-Winner Accuracy** | **100.0% (3/3)** | 33.3% (1/3) | Solvable cases with a single dominant carrier (EVAL-01, 02, 04) |
 | **Tie Handling** | **100.0% (1/1)** | 0.0% (0/1) | Refuses to crown an arbitrary winner when exposure is equal (EVAL-03) |
 | **Insufficient-Data Abstention** | **100.0% (1/1)** | 0.0% (0/1) | Emits `INCONCLUSIVE_INSUFFICIENT_DATA` when gaps exceed 600s (EVAL-05) |
+| **Decision Coverage** | **60.0% (3/5)** | 100.0% (5/5) | Unique selections / all cases (primary abstains on ties and gaps; naive blindly crowns a winner) |
 | **Overall Fixture Decision Outcomes** | **100.0% (5/5)** | 20.0% (1/5) | Performance across all 5 synthetic edge-case fixtures |
 
 - **Why Naive Baseline Failed 4 of 5 Cases**:

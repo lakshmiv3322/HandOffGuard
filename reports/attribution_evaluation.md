@@ -4,7 +4,7 @@
 > Target: *Handoff with the largest supported out-of-range exposure within an excursion window.*  
 > Decision support tool only — product disposition remains with the quality team.
 
-Generated: 2026-10-31 06:56 UTC
+Generated: 2026-10-31 07:15 UTC
 
 ---
 
@@ -17,7 +17,7 @@ To avoid misleading blanket accuracy claims, performance is separated across tes
 | **Unique-Winner Accuracy** | **100.0%** (3/3) | 33.3% (1/3) | Cases with a single dominant responsible custody segment (EVAL-01, 02, 04) |
 | **Tie Handling** | **100.0%** (1/1) | 0.0% (0/1) | Refusal to crown an arbitrary winner when exposure is exactly equal (EVAL-03) |
 | **Insufficient-Data Abstention** | **100.0%** (1/1) | 0.0% (0/1) | Emitting INCONCLUSIVE when gaps exceed 600s rather than guessing (EVAL-05) |
-| **Decision Coverage** | **100.0%** (5/5) | 100.0% | Taking appropriate action (attributing when evidence suffices, abstaining when not) |
+| **Decision Coverage** | **60.0%** (3/5) | 100.0% (5/5) | Unique selections / all cases (primary abstains on ties and gaps; naive blindly crowns a winner) |
 | **Overall Fixture Outcomes** | **100.0%** (5/5) | 20.0% (1/5) | All 5 synthetic edge-case fixtures |
 
 > *Note on Naive Baseline:* Naive baseline assigns custody based solely on the handoff containing the first observed out-of-range reading using uncorrected timestamps. It succeeded only on EVAL-01 (where there was only one carrier) and failed on spanning exposure (EVAL-02), tie detection (EVAL-03), clock offset (EVAL-04), and insufficient data (EVAL-05).

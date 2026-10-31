@@ -12,7 +12,7 @@ Idempotently seeds the three mandatory demo scenarios into HANDOFFGUARD:
 2. Insufficient Evidence:
    Shipment: SHP-2026-0881
    Excursion: EXC-1002
-   9 sparse readings with multi-hour gaps (> 600s threshold).
+   9 sparse readings with consecutive gaps ranging from 30 to 75 min (all > 600s threshold).
    Attribution status: INCONCLUSIVE_INSUFFICIENT_DATA.
    Exposure displayed as "Unavailable" (not valid zero). Peak observed temp 18.2 °C preserved.
 

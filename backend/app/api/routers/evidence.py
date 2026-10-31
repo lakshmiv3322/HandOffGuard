@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/excursions", tags=["Evidence Report"])
 
 @router.get("/{excursion_id}/evidence-report")
 async def get_evidence_report(
-    excursion_id: int,
+    excursion_id: str,
     excursion_repo: AbstractExcursionRepository = Depends(get_excursion_repo),
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
     handoff_repo: AbstractHandoffRepository = Depends(get_handoff_repo),
