@@ -1,0 +1,76 @@
+{
+  "_label": "Developer-laptop benchmark -- not a production workload comparison.",
+  "generated_at": "2026-10-31 05:57 UTC",
+  "shipment_id": "SHP-SYNTH-DENSE-01",
+  "reading_count": 301,
+  "handoff_count": 3,
+  "n_repeats": 10,
+  "max_gap_seconds": 600,
+  "product_range_c": [
+    2.0,
+    8.0
+  ],
+  "environment": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.15",
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "note": "Exasol runs in Docker on the same developer laptop. Exasol timings include TCP round-trip and result-set fetch over loopback. Results are NOT representative of production-scale workloads."
+  },
+  "correctness": true,
+  "per_handoff_correctness": [
+    {
+      "handoff_id": "HND-SYNTH-01",
+      "exasol_dm": 0.0,
+      "pandas_dm": 0.0,
+      "diff": 0.0,
+      "ok": true
+    },
+    {
+      "handoff_id": "HND-SYNTH-02",
+      "exasol_dm": 289.12,
+      "pandas_dm": 289.12,
+      "diff": 0.0,
+      "ok": true
+    },
+    {
+      "handoff_id": "HND-SYNTH-03",
+      "exasol_dm": 0.0,
+      "pandas_dm": 0.0,
+      "diff": 0.0,
+      "ok": true
+    }
+  ],
+  "exasol_timings_s": [
+    0.130311,
+    0.12351,
+    0.101675,
+    0.095352,
+    0.095256,
+    0.094926,
+    0.231941,
+    0.134925,
+    0.096537,
+    0.124788
+  ],
+  "pandas_timings_s": [
+    0.01451,
+    0.011608,
+    0.008576,
+    0.011461,
+    0.012924,
+    0.00766,
+    0.01152,
+    0.011946,
+    0.011268,
+    0.021854
+  ],
+  "summary": {
+    "exasol_median_ms": 112.59,
+    "exasol_min_ms": 94.93,
+    "exasol_max_ms": 231.94,
+    "pandas_median_ms": 11.56,
+    "pandas_min_ms": 7.66,
+    "pandas_max_ms": 21.85
+  }
+}
