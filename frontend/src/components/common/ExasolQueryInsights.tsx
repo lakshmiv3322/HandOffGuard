@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getQueryInsights, type QueryInsightsData } from '../../api/insights';
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 
 interface ExasolQueryInsightsProps {
   queryIdentifier?: string;
@@ -126,7 +126,7 @@ export function ExasolQueryInsights({
             <span>
               Latest Reading:{' '}
               <span className="font-mono text-slate-700">
-                {format(new Date(data.latest_reading_timestamp), 'yyyy-MM-dd HH:mm:ss')} UTC
+                {safeFormat(data.latest_reading_timestamp, 'yyyy-MM-dd HH:mm:ss')} UTC
               </span>
             </span>
           )}
@@ -151,7 +151,7 @@ export function ExasolQueryInsights({
         <div className="mt-2 p-3 bg-slate-900 rounded-lg text-slate-200 font-mono text-[11px] overflow-x-auto border border-slate-800">
           <div className="flex justify-between text-slate-400 text-[10px] mb-1.5 border-b border-slate-800 pb-1">
             <span>EXASOL SQL SPECIFICATION</span>
-            <span>Measured at {format(new Date(data.measured_at), 'HH:mm:ss')} UTC</span>
+            <span>Measured at {safeFormat(data.measured_at, 'HH:mm:ss')} UTC</span>
           </div>
           <pre>{data.sql_query}</pre>
         </div>

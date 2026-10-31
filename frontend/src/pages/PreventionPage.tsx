@@ -3,7 +3,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
 import { Disclaimer } from '../components/common/Disclaimer';
 import { PageHeader } from '../components/common/PageHeader';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/date';
 
 export function PreventionPage() {
   const { data, loading, error, refetch } = usePrevention();
@@ -52,8 +52,8 @@ export function PreventionPage() {
             </p>
           </div>
           <div className="text-left sm:text-right text-xs text-slate-500">
-            <p>Dispatched: {format(new Date(shipment.dispatched_at), 'MMM dd, HH:mm')} UTC</p>
-            <p>Expected Arrival: {format(new Date(shipment.expected_delivery_at), 'MMM dd, HH:mm')} UTC</p>
+            <p>Dispatched: {safeFormat(shipment.dispatched_at, 'MMM dd, HH:mm')} UTC</p>
+            <p>Expected Arrival: {safeFormat(shipment.expected_delivery_at, 'MMM dd, HH:mm')} UTC</p>
           </div>
         </div>
 
@@ -128,8 +128,8 @@ export function PreventionPage() {
           <div>
             <span className="text-slate-400">Window:</span>
             <p className="font-medium text-slate-800">
-              {format(new Date(riskiest_handoff.window_start_utc), 'HH:mm')} –{' '}
-              {format(new Date(riskiest_handoff.window_end_utc), 'HH:mm')} UTC
+              {safeFormat(riskiest_handoff.window_start_utc, 'HH:mm')} –{' '}
+              {safeFormat(riskiest_handoff.window_end_utc, 'HH:mm')} UTC
             </p>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function PreventionPage() {
                   <span>Type: <strong className="text-slate-700 capitalize">{h.handoff_type}</strong></span>
                   <span>Dwell: <strong className="text-slate-700">{h.dwell_minutes}m</strong></span>
                   <span>
-                    {format(new Date(h.window_start_utc), 'HH:mm')} – {format(new Date(h.window_end_utc), 'HH:mm')} UTC
+                    {safeFormat(h.window_start_utc, 'HH:mm')} – {safeFormat(h.window_end_utc, 'HH:mm')} UTC
                   </span>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { AttributionHandoff, ExcursionEvent } from '../../types/api';
 
 interface EvidenceReportCardProps {
@@ -86,7 +86,7 @@ export function EvidenceReportCard({ handoff, excursion }: EvidenceReportCardPro
         <div className="p-3 bg-white rounded-lg border border-slate-200">
           <p className="text-[10px] uppercase font-bold text-slate-400">Excursion Window</p>
           <p className="text-xs font-bold text-slate-800 font-mono mt-1">
-            {format(new Date(excursion.started_at_utc), 'HH:mm')} – {format(new Date(excursion.ended_at_utc), 'HH:mm')} UTC
+            {safeFormat(excursion.started_at_utc, 'HH:mm')} – {safeFormat(excursion.ended_at_utc, 'HH:mm')} UTC
           </p>
           <p className="text-[10px] text-slate-500 mt-0.5">
             Duration: {excursion.duration_minutes} min (Peak: {excursion.peak_temp_c}°C)

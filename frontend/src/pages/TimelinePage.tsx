@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/date';
 import { useTimeline } from '../hooks/useTimeline';
 import { useTelemetryDrilldown } from '../hooks/useTelemetryDrilldown';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
@@ -113,7 +113,7 @@ export function TimelinePage() {
               Synchronized telemetry from {loggers.length} logger(s) mapped against {handoffs.length} custody handoff intervals.
               {readings.length > 0 && (
                 <span className="ml-2 font-mono text-slate-600 font-medium">
-                  | Latest recorded reading: {format(new Date(readings[readings.length - 1].recorded_at_utc), 'yyyy-MM-dd HH:mm')} UTC
+                  | Latest recorded reading: {safeFormat(readings[readings.length - 1]?.recorded_at_utc, 'yyyy-MM-dd HH:mm')} UTC
                 </span>
               )}
             </p>
@@ -173,7 +173,7 @@ export function TimelinePage() {
         />
 
         {/* Thermal Exposure Horizontal Bar Chart */}
-        <ExposureBarChart shipmentId={Number(shipment.shipment_id)} />
+        <ExposureBarChart shipmentId={shipment.shipment_id} />
       </div>
 
       {/* Custody Handoffs Grid */}
@@ -241,7 +241,7 @@ export function TimelinePage() {
       />
 
       {/* Exasol Interval Join: Reading-to-Handoff Membership */}
-      <MembershipTable shipmentId={Number(shipment.shipment_id)} />
+      <MembershipTable shipmentId={shipment.shipment_id} />
 
       {/* Telemetry Drilldown Modal */}
       {isDrilldownOpen && drilldownData && (

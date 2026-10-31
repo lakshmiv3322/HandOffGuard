@@ -11,7 +11,7 @@ import {
   ReferenceLine,
   Brush,
 } from 'recharts';
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import {
   type DrilldownHandoff,
   type TelemetryDrilldownData,
@@ -132,6 +132,30 @@ export function TelemetryDrilldownModal({
     };
   }, [chartPoints, product.min_temp_c, product.max_temp_c]);
 
+  if (chartPoints.length === 0) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm p-4">
+        <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 space-y-4 text-center">
+          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto text-xl font-bold">
+            ℹ
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-800">No Sensor Readings Available</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Shipment {data.shipment_code} does not have temperature logger observations recorded yet.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Custom hover tooltip
   const renderCustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload || !payload.length) return null;
@@ -141,7 +165,7 @@ export function TelemetryDrilldownModal({
       <div className="bg-slate-900 text-white rounded-lg p-3 text-xs shadow-xl border border-slate-700 max-w-xs space-y-1.5 z-50">
         <div className="flex items-center justify-between border-b border-slate-700 pb-1">
           <span className="font-bold text-amber-400 font-mono">
-            {format(new Date(pt.ts), 'yyyy-MM-dd HH:mm:ss')} UTC
+            {safeFormat(pt.ts, 'yyyy-MM-dd HH:mm:ss')} UTC
           </span>
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
             ID #{pt.reading_id}
@@ -228,7 +252,7 @@ export function TelemetryDrilldownModal({
                 High-resolution sensor telemetry joined with custody handoff windows in Exasol.
                 {readings.length > 0 && (
                   <span className="ml-2 font-mono text-slate-300 font-medium">
-                    | Latest recorded reading: {format(new Date(readings[readings.length - 1].reading_at_utc), 'yyyy-MM-dd HH:mm')} UTC
+                    | Latest recorded reading: {safeFormat(readings[readings.length - 1]?.reading_at_utc, 'yyyy-MM-dd HH:mm')} UTC
                   </span>
                 )}
               </p>
@@ -334,7 +358,7 @@ export function TelemetryDrilldownModal({
                     dataKey="ts"
                     type="number"
                     domain={['dataMin', 'dataMax']}
-                    tickFormatter={(unix) => format(new Date(unix), 'HH:mm')}
+                    tickFormatter={(unix) => safeFormat(unix, 'HH:mm')}
                     tick={{ fontSize: 11, fill: '#64748b' }}
                   />
 
@@ -472,7 +496,7 @@ export function TelemetryDrilldownModal({
                     height={28}
                     stroke="#3b82f6"
                     fill="#f8fafc"
-                    tickFormatter={(unix) => format(new Date(unix), 'HH:mm')}
+                    tickFormatter={(unix) => safeFormat(unix, 'HH:mm')}
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -585,13 +609,13 @@ export function TelemetryDrilldownModal({
                   <p>
                     <span className="text-slate-400">Window Start:</span>{' '}
                     <span className="font-mono">
-                      {format(new Date(selectedHandoff.window_start_utc), 'yyyy-MM-dd HH:mm:ss')} UTC
+                      {safeFormat(selectedHandoff.window_start_utc, 'yyyy-MM-dd HH:mm:ss')} UTC
                     </span>
                   </p>
                   <p>
                     <span className="text-slate-400">Window End:</span>{' '}
                     <span className="font-mono">
-                      {format(new Date(selectedHandoff.window_end_utc), 'yyyy-MM-dd HH:mm:ss')} UTC
+                      {safeFormat(selectedHandoff.window_end_utc, 'yyyy-MM-dd HH:mm:ss')} UTC
                     </span>
                   </p>
                 </div>

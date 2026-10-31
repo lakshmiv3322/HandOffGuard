@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { Handoff, ExcursionEvent } from '../../types/api';
 
 interface HandoffCardProps {
@@ -102,8 +102,8 @@ export function HandoffCard({
       <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
         <span>
           <span className="font-medium">Window:</span>{' '}
-          {format(new Date(handoff.window_start_utc), 'HH:mm')} –{' '}
-          {format(new Date(handoff.window_end_utc), 'HH:mm')} UTC
+          {safeFormat(handoff.window_start_utc, 'HH:mm')} –{' '}
+          {safeFormat(handoff.window_end_utc, 'HH:mm')} UTC
         </span>
         <span>
           <span className="font-medium">Dwell:</span> {handoff.dwell_minutes.toFixed(0)} min

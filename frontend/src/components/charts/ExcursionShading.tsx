@@ -1,7 +1,7 @@
 // ExcursionShading renders a visual summary list of excursion intervals
 // (the actual red shading is done inside TemperatureChart via ReferenceArea).
 
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { ExcursionEvent } from '../../types/api';
 import { SeverityBadge } from '../common/Badge';
 
@@ -25,8 +25,8 @@ export function ExcursionShading({ excursions }: ExcursionShadingProps) {
           >
             <span className="inline-block h-2 w-4 rounded-sm bg-red-400 opacity-70" />
             <span>
-              {format(new Date(ex.started_at_utc), 'HH:mm')} –{' '}
-              {format(new Date(ex.ended_at_utc), 'HH:mm')} UTC
+              {safeFormat(ex.started_at_utc, 'HH:mm')} –{' '}
+              {safeFormat(ex.ended_at_utc, 'HH:mm')} UTC
             </span>
             <span>({ex.duration_minutes.toFixed(0)} min)</span>
             <span>Peak: {ex.peak_temp_c.toFixed(1)}°C</span>

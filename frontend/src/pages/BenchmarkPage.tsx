@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getBenchmarkResults, type BenchmarkReportData } from '../api/insights';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/date';
 
 export function BenchmarkPage() {
   const navigate = useNavigate();
@@ -78,7 +78,7 @@ export function BenchmarkPage() {
 
           <div className="text-left sm:text-right text-xs text-slate-500">
             <p className="font-semibold text-slate-700">Benchmark Date</p>
-            <p className="font-mono">{format(new Date(benchmark_date), 'yyyy-MM-dd HH:mm:ss')} UTC</p>
+            <p className="font-mono">{safeFormat(benchmark_date, 'yyyy-MM-dd HH:mm:ss')} UTC</p>
           </div>
         </div>
       </div>

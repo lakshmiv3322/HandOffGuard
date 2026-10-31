@@ -6,7 +6,7 @@ import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
 import { EmptyState } from '../components/common/EmptyState';
 import { PageHeader } from '../components/common/PageHeader';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/date';
 
 export function ShipmentsPage() {
   const navigate = useNavigate();
@@ -160,7 +160,7 @@ export function ShipmentsPage() {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right text-xs text-slate-500 whitespace-nowrap">
-                      {format(new Date(s.dispatched_at), 'yyyy-MM-dd HH:mm')}
+                      {safeFormat(s.dispatched_at, 'yyyy-MM-dd HH:mm')}
                     </td>
                   </tr>
                 ))}

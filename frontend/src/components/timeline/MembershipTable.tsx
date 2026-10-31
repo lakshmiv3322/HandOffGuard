@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getShipmentMembership, MembershipRecord, MembershipResponse } from '../../api/membership';
 
 interface Props {
-  shipmentId: number;
+  shipmentId: string | number;
 }
 
 export const MembershipTable: React.FC<Props> = ({ shipmentId }) => {

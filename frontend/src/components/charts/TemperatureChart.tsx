@@ -10,7 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { TemperatureReading, Handoff, ExcursionEvent } from '../../types/api';
 
 // Palette for up to 8 loggers
@@ -57,7 +57,7 @@ interface CustomTooltipProps {
 function CustomTooltip({ active, payload, label, minTempC, maxTempC }: CustomTooltipProps) {
   if (!active || !payload?.length || label === undefined) return null;
 
-  const time = format(new Date(label), 'yyyy-MM-dd HH:mm:ss') + ' UTC';
+  const time = safeFormat(label, 'yyyy-MM-dd HH:mm:ss') + ' UTC';
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-lg text-xs max-w-xs">
@@ -94,6 +94,18 @@ export function TemperatureChart({
   suspectedHandoffId,
   highlightedHandoffId,
 }: TemperatureChartProps) {
+  if (!readings || readings.length === 0) {
+    return (
+      <div className="w-full h-64 flex flex-col items-center justify-center bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+        <svg className="w-8 h-8 mb-2 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+        <p className="font-semibold text-slate-500">No Temperature Telemetry Recorded</p>
+        <p className="text-[11px] text-slate-400 mt-1">This shipment has no sensor readings stored in Exasol.</p>
+      </div>
+    );
+  }
+
   // Group readings by logger_id
   const loggerIds = Array.from(new Set(readings.map((r) => r.logger_id)));
 
@@ -156,7 +168,7 @@ export function TemperatureChart({
   const xMin = filled.length ? filled[0].ts : Date.now();
   const xMax = filled.length ? filled[filled.length - 1].ts : Date.now();
 
-  const formatXTick = (value: number) => format(new Date(value), 'MM-dd HH:mm');
+  const formatXTick = (value: number) => safeFormat(value, 'MM-dd HH:mm');
 
   return (
     <div className="w-full" style={{ height: 380 }}>

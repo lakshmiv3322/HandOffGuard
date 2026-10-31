@@ -4,7 +4,7 @@ import { getEvidenceReport } from '../api/attribution';
 import type { EvidenceReportData } from '../types/api';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { ErrorState } from '../components/common/ErrorState';
-import { format } from 'date-fns';
+import { safeFormat } from '../utils/date';
 
 export function EvidenceReportPage() {
   const { shipment_id, excursion_id } = useParams<{ shipment_id: string; excursion_id: string }>();
@@ -99,7 +99,7 @@ export function EvidenceReportPage() {
             </div>
             <div className="text-right text-xs text-slate-500">
               <p className="font-semibold text-slate-700">Generated On (UTC)</p>
-              <p className="font-mono mt-0.5">{format(new Date(generated_at), 'yyyy-MM-dd HH:mm:ss')}</p>
+              <p className="font-mono mt-0.5">{safeFormat(generated_at, 'yyyy-MM-dd HH:mm:ss')}</p>
               <span className="inline-block mt-1 px-2 py-0.5 bg-slate-100 border border-slate-200 text-[10px] font-bold rounded">
                 PROTOTYPE AUDIT
               </span>
@@ -114,7 +114,7 @@ export function EvidenceReportPage() {
             <div className="space-y-1">
               <p><span className="text-slate-500">Origin:</span> {shipment_details.origin}</p>
               <p><span className="text-slate-500">Destination:</span> {shipment_details.destination}</p>
-              <p><span className="text-slate-500">Dispatched:</span> {format(new Date(shipment_details.dispatched_at), 'yyyy-MM-dd HH:mm')} UTC</p>
+              <p><span className="text-slate-500">Dispatched:</span> {safeFormat(shipment_details.dispatched_at, 'yyyy-MM-dd HH:mm')} UTC</p>
               <p><span className="text-slate-500">Status:</span> {shipment_details.status.toUpperCase()}</p>
             </div>
           </div>
@@ -138,8 +138,8 @@ export function EvidenceReportPage() {
               <p><span className="text-slate-500">Severity:</span> <span className="font-bold uppercase text-rose-700">{excursion_details.severity}</span></p>
               <p><span className="text-slate-500">Peak Temperature:</span> <span className="font-bold text-rose-700">{excursion_details.peak_temp_c}°C</span></p>
               <p><span className="text-slate-500">Duration Outside Limits:</span> {excursion_details.duration_minutes} minutes</p>
-              <p><span className="text-slate-500">Started:</span> {format(new Date(excursion_details.started_at_utc), 'yyyy-MM-dd HH:mm')} UTC</p>
-              <p><span className="text-slate-500">Ended:</span> {format(new Date(excursion_details.ended_at_utc), 'yyyy-MM-dd HH:mm')} UTC</p>
+              <p><span className="text-slate-500">Started:</span> {safeFormat(excursion_details.started_at_utc, 'yyyy-MM-dd HH:mm')} UTC</p>
+              <p><span className="text-slate-500">Ended:</span> {safeFormat(excursion_details.ended_at_utc, 'yyyy-MM-dd HH:mm')} UTC</p>
               {excursion_details.ground_truth_cause && (
                 <p className="mt-1"><span className="text-slate-500">Root Cause Note:</span> {excursion_details.ground_truth_cause}</p>
               )}

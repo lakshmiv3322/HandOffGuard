@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { Product, ShipmentDetail } from '../../types/api';
 import { StatusBadge } from '../common/Badge';
 
@@ -17,8 +17,8 @@ export function TimelineHeader({
   loggerCount,
   excursionCount,
 }: TimelineHeaderProps) {
-  const dispatched = format(new Date(shipment.dispatched_at), 'PPpp');
-  const expected = format(new Date(shipment.expected_delivery_at), 'PPpp');
+  const dispatched = safeFormat(shipment.dispatched_at, 'PPpp', 'Pending Dispatch');
+  const expected = safeFormat(shipment.expected_delivery_at, 'PPpp', 'TBD');
   const prodName = product ? product.name : shipment.product?.name;
   const hCount = handoffCount ?? shipment.handoff_count;
   const lCount = loggerCount ?? shipment.logger_count;

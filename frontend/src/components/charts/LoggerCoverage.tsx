@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { safeFormat } from '../../utils/date';
 import type { Logger, TemperatureReading } from '../../types/api';
 
 // Palette matches TemperatureChart
@@ -20,7 +20,7 @@ interface LoggerCoverageProps {
 }
 
 export function LoggerCoverage({ loggers, readings, clockSkewCorrections }: LoggerCoverageProps) {
-  if (!loggers.length) return null;
+  if (!loggers.length || !readings.length) return null;
 
   // Determine overall time range
   const allTs = readings.map((r) => new Date(r.recorded_at_utc).getTime());
@@ -70,13 +70,13 @@ export function LoggerCoverage({ loggers, readings, clockSkewCorrections }: Logg
                     background: color,
                     opacity: 0.75,
                   }}
-                  title={`${format(new Date(start), 'HH:mm')} – ${format(new Date(end), 'HH:mm')} UTC`}
+                  title={`${safeFormat(start, 'HH:mm')} – ${safeFormat(end, 'HH:mm')} UTC`}
                 />
               </div>
 
               {/* Times */}
               <div className="w-28 shrink-0 text-xs text-slate-400 text-right">
-                {format(new Date(start), 'HH:mm')} – {format(new Date(end), 'HH:mm')}
+                {safeFormat(start, 'HH:mm')} – {safeFormat(end, 'HH:mm')}
               </div>
 
               {/* Skew indicator */}
