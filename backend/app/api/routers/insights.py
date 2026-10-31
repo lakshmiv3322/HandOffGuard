@@ -29,11 +29,12 @@ QUERY_DEFINITIONS = {
     "shipment_interval_membership": {
         "name": "Shipment Reading-to-Handoff Interval Join",
         "sql_view": "HANDOFFGUARD.v_reading_handoff_membership",
-        "sql_file_path": "db/migrations/004_create_views.sql",
-        "sql_query": """SELECT reading_id, logger_id, reading_at_utc, temperature_c, battery_pct,
-       shipment_id, handoff_id, handoff_type, from_party, to_party,
-       window_start_utc, window_end_utc, skew_seconds, boundary_skew_seconds,
-       membership_status, ambiguity_flag
+        "sql_file_path": "db/migrations/005_repair_analytics_views.sql",
+        "sql_query": """SELECT reading_id, logger_id, reading_at_utc, corrected_at_utc,
+       temperature_c, battery_pct, shipment_id, handoff_id,
+       sequence_no, handoff_type, from_party, to_party,
+       window_start_utc, window_end_utc, window_source,
+       clock_skew_seconds, candidate_count, membership_status, ambiguity_flag
 FROM HANDOFFGUARD.v_reading_handoff_membership
 WHERE shipment_id = :shipment_id
 ORDER BY reading_at_utc;""",
@@ -41,14 +42,18 @@ ORDER BY reading_at_utc;""",
     "handoff_thermal_exposure": {
         "name": "Handoff Custody Thermal Exposure Aggregation",
         "sql_view": "HANDOFFGUARD.v_handoff_thermal_exposure",
-        "sql_file_path": "db/migrations/004_create_views.sql",
+        "sql_file_path": "db/migrations/005_repair_analytics_views.sql",
         "sql_query": """SELECT handoff_id, shipment_id, sequence_no, handoff_type,
-       from_party, to_party, location, window_start_utc, window_end_utc,
-       window_duration_minutes, reading_count,
+       from_party, to_party, location, window_source,
+       window_start_utc, window_end_utc, assigned_logger_count,
+       custody_duration_minutes, reading_count,
+       supported_observation_minutes, ambiguous_minutes,
+       unsupported_gap_minutes, coverage_pct,
        min_temp_c, max_temp_c, avg_temp_c,
+       safe_min_temp_c, safe_max_temp_c,
        minutes_above_safe, minutes_below_safe,
        degree_minutes_above, degree_minutes_below,
-       exposure_severity
+       total_degree_minutes, coverage_status
 FROM HANDOFFGUARD.v_handoff_thermal_exposure
 WHERE shipment_id = :shipment_id
 ORDER BY sequence_no;""",
@@ -56,11 +61,14 @@ ORDER BY sequence_no;""",
     "excursion_attribution": {
         "name": "Custody Excursion Attribution & Ranking",
         "sql_view": "HANDOFFGUARD.v_excursion_attribution",
-        "sql_file_path": "db/migrations/004_create_views.sql",
-        "sql_query": """SELECT handoff_id, shipment_id, sequence_no, handoff_type,
-       from_party, to_party, handoff_degree_minutes_above,
-       exposure_share, skew_penalty, ambiguity_penalty,
-       attribution_score, confidence_level, attribution_rank
+        "sql_file_path": "db/migrations/005_repair_analytics_views.sql",
+        "sql_query": """SELECT excursion_id, shipment_id, handoff_id, sequence_no, handoff_type,
+       associated_party, to_party, location, window_source,
+       window_start_utc, window_end_utc, exc_start, exc_end,
+       exc_duration_minutes, exc_peak_temp_c, assigned_logger_count,
+       reading_count, supported_observation_minutes, ambiguous_minutes,
+       handoff_total_dm, total_excursion_dm, total_supported_obs_min,
+       exposure_share, attribution_rank, evidence_status, disclaimer
 FROM HANDOFFGUARD.v_excursion_attribution
 WHERE shipment_id = :shipment_id
 ORDER BY attribution_rank;""",
@@ -71,7 +79,7 @@ ORDER BY attribution_rank;""",
 @router.get("/query-insights")
 async def get_query_insights(
     query: str = Query("shipment_interval_membership", description="Query identifier"),
-    shipment_id: int = Query(1, description="Shipment ID to query"),
+    shipment_id: str = Query("SHP-2026-0881", description="Shipment ID to query"),
     shipment_repo=Depends(get_shipment_repo),
     reading_repo=Depends(get_reading_repo),
     handoff_repo=Depends(get_handoff_repo),
@@ -106,10 +114,10 @@ async def get_query_insights(
                 sql = (
                     "SELECT reading_id, reading_at_utc, membership_status "
                     "FROM HANDOFFGUARD.v_reading_handoff_membership "
-                    "WHERE shipment_id = {sid!d} "
+                    "WHERE shipment_id = {sid} "
                     "ORDER BY reading_at_utc"
                 )
-                rows = await pool.execute(sql, {"sid": shipment_id})
+                rows = await pool.execute(sql, {"sid": str(shipment_id)})
                 rows_returned = len(rows)
 
                 # Total readings examined in table for this shipment
@@ -117,17 +125,17 @@ async def get_query_insights(
                     "SELECT COUNT(*) AS total_count, MAX(reading_at_utc) AS max_ts "
                     "FROM HANDOFFGUARD.logger_readings r "
                     "JOIN HANDOFFGUARD.logger_devices ld ON r.logger_id = ld.logger_id "
-                    "WHERE ld.assigned_shipment_id = {sid!d}"
+                    "WHERE ld.assigned_shipment_id = {sid}"
                 )
-                cnt_rows = await pool.execute(cnt_sql, {"sid": shipment_id})
+                cnt_rows = await pool.execute(cnt_sql, {"sid": str(shipment_id)})
                 if cnt_rows:
                     first = cnt_rows[0]
                     rows_examined = int(first.get("TOTAL_COUNT") or first.get("total_count") or rows_returned)
                     latest_ts = str(first.get("MAX_TS") or first.get("max_ts") or "")
             else:
                 view_name = q_meta["sql_view"]
-                sql = f"SELECT * FROM {view_name} WHERE shipment_id = {{sid!d}}"
-                rows = await pool.execute(sql, {"sid": shipment_id})
+                sql = f"SELECT * FROM {view_name} WHERE shipment_id = {{sid}}"
+                rows = await pool.execute(sql, {"sid": str(shipment_id)})
                 rows_returned = len(rows)
                 rows_examined = rows_returned
 
@@ -137,7 +145,7 @@ async def get_query_insights(
             exasol_status = "dev_fallback"
 
     if exasol_status == "dev_fallback":
-        # Empirically measure via SQLite repository
+        # Empirically measure via repository
         all_readings = await reading_repo.get_by_shipment(shipment_id)
         rows_examined = len(all_readings)
 
@@ -146,11 +154,10 @@ async def get_query_insights(
 
         if q_key == "shipment_interval_membership":
             handoffs = await handoff_repo.get_by_shipment(shipment_id)
-            # Count matches
             matched_count = 0
             for r in all_readings:
                 for h in handoffs:
-                    if h.window_start_utc <= r.recorded_at_utc <= h.window_end_utc:
+                    if h.window_start_utc <= r.recorded_at_utc < h.window_end_utc:
                         matched_count += 1
                         break
             rows_returned = matched_count
@@ -158,48 +165,40 @@ async def get_query_insights(
             handoffs = await handoff_repo.get_by_shipment(shipment_id)
             rows_returned = len(handoffs)
 
-    t_end = time.perf_counter()
-    measured_ms = round((t_end - t_start) * 1000.0, 2)
+    elapsed_ms = (time.perf_counter() - t_start) * 1000.0
+
+    # Read SQL file contents if available
+    sql_text = q_meta["sql_query"]
+    file_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+        q_meta["sql_file_path"],
+    )
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                sql_text = f.read()
+        except Exception:
+            pass
 
     return {
-        "query_identifier": q_key,
+        "query_key": q_key,
         "query_name": q_meta["name"],
         "sql_view": q_meta["sql_view"],
-        "rows_examined": rows_examined,
-        "rows_returned": rows_returned,
-        "execution_time_ms": measured_ms,
-        "latest_reading_timestamp": latest_ts,
-        "exasol_connection_status": exasol_status,
         "sql_file_path": q_meta["sql_file_path"],
-        "sql_query": q_meta["sql_query"].replace(":shipment_id", str(shipment_id)),
-        "measured_at": datetime.now(timezone.utc).isoformat(),
-        "disclaimer": "Metrics represent real measured execution data. No synthetic throughput extrapolations.",
+        "sql_source": sql_text,
+        "execution_metrics": {
+            "execution_time_ms": round(elapsed_ms, 2),
+            "rows_examined": rows_examined,
+            "rows_returned": rows_returned,
+            "filter_applied": f"shipment_id = '{shipment_id}'",
+            "measured_at_utc": datetime.now(timezone.utc).isoformat(),
+            "latest_reading_at_utc": latest_ts,
+            "engine": exasol_status,
+        },
+        "system_profile": {
+            "database": "Exasol" if exasol_status == "connected" else "SQLite (Fallback)",
+            "join_method": "Analytical SQL Interval Join (corrected_time >= actual_start_at AND corrected_time < actual_end_at)",
+            "aggregation": "Degree-minutes across supported segments (<= 600s gap)",
+            "disclaimer": "Measured directly on the running backend. No simulated or inflated figures.",
+        },
     }
-
-
-@router.get("/benchmark-results")
-async def get_benchmark_results() -> Dict[str, Any]:
-    """
-    Returns the reproducible multi-engine interval join benchmark results
-    generated by `npm run benchmark:interval-join`.
-    """
-    # Look for reports/interval_join_benchmark.json in repo root
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(current_dir, "..", "..", "..", ".."))
-    json_path = os.path.join(repo_root, "reports", "interval_join_benchmark.json")
-
-    if os.path.exists(json_path):
-        try:
-            with open(json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error reading benchmark results: {str(e)}",
-            )
-
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Benchmark report not found. Run 'npm run benchmark:interval-join' to generate it.",
-    )

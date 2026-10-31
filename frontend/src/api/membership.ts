@@ -1,23 +1,27 @@
 import apiClient from './client';
 
 export interface MembershipRecord {
-  reading_id: number;
-  logger_id: number;
+  reading_id: string | number;
+  logger_id: string | number;
   reading_at_utc: string;
+  corrected_at_utc?: string;
   temperature_c: number;
   battery_pct: number | null;
-  shipment_id: number;
-  handoff_id: number | null;
+  shipment_id: string | number;
+  handoff_id: string | number | null;
+  sequence_no?: number | null;
   handoff_type: string | null;
   from_party: string | null;
   to_party: string | null;
-  membership_status: 'matched' | 'matched_with_skew' | 'ambiguous' | 'unmatched';
+  membership_status: string;
   skew_seconds: number;
+  candidate_count?: number;
+  window_source?: string;
   ambiguity_flag: boolean;
 }
 
 export interface MembershipResponse {
-  shipment_id: number;
+  shipment_id: string | number;
   shipment_code: string;
   engine: string;
   counts: {
@@ -32,7 +36,7 @@ export interface MembershipResponse {
 }
 
 export async function getShipmentMembership(
-  shipmentId: number,
+  shipmentId: string | number,
   statusFilter?: string
 ): Promise<MembershipResponse> {
   const params: Record<string, any> = { limit: 100 };

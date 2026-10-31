@@ -31,8 +31,11 @@ from app.config import settings
 def _correct_timestamp(
     reading: TemperatureReading, logger: Logger
 ) -> datetime:
-    """Apply logger clock-skew correction to a raw reading timestamp."""
-    return reading.recorded_at_utc + timedelta(seconds=logger.clock_skew_seconds)
+    """Apply logger clock-skew correction to a raw reading timestamp.
+    CLOCK_SKEW_SECONDS = device clock - UTC reference.
+    Therefore UTC = device clock - CLOCK_SKEW_SECONDS.
+    """
+    return reading.recorded_at_utc - timedelta(seconds=logger.clock_skew_seconds)
 
 
 def _nearest_safe_limit_distance(temperature_c: float, min_temp_c: float, max_temp_c: float) -> float:
@@ -221,19 +224,24 @@ class ExposureService:
         all_corrected: list[ReadingWithCorrection],
         index: int,
         logger: Logger,
+        max_supported_gap_seconds: float = 600.0,
     ) -> float:
         """
         Compute the time interval (in minutes) this reading represents.
 
-        For the first reading, use logger.sampling_interval_seconds / 60.
-        For subsequent readings, use the delta from the previous reading.
+        Configurable prototype default gap limit = 600 seconds (10 min).
+        Engineering/demo assumption, not a validated pharmaceutical standard.
+        Gaps > 600s or non-positive deltas are unsupported and return 0.0 minutes.
         """
         if index == 0:
-            return logger.sampling_interval_seconds / 60.0
+            sampling_sec = logger.sampling_interval_seconds or 60.0
+            return (sampling_sec / 60.0) if sampling_sec <= max_supported_gap_seconds else 0.0
         previous = all_corrected[index - 1]
         delta_seconds = (
             corrected.corrected_at_utc - previous.corrected_at_utc
         ).total_seconds()
+        if delta_seconds <= 0 or delta_seconds > max_supported_gap_seconds:
+            return 0.0
         return delta_seconds / 60.0
 
     def _estimate_expected_readings(

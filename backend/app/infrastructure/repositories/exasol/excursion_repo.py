@@ -13,25 +13,45 @@ class ExasolExcursionRepository(AbstractExcursionRepository):
 
     async def get_by_shipment(self, shipment_id: str | int) -> list[ExcursionEvent]:
         rows = await get_pool().execute(
-            "SELECT ID AS EXCURSION_ID, SHIPMENT_ID, "
-            "       STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
-            "       PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
-            "       HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
-            "FROM HANDOFFGUARD.EXCURSION_EVENTS "
+            "SELECT EXCURSION_ID, SHIPMENT_ID, STARTED_AT_UTC, ENDED_AT_UTC, "
+            "       PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "       GROUND_TRUTH_HANDOFF_ID, GROUND_TRUTH_CAUSE "
+            "FROM ("
+            "  SELECT EXCURSION_ID, SHIPMENT_ID, STARTED_AT_UTC, ENDED_AT_UTC, "
+            "         MAX_TEMP_C AS PEAK_TEMP_C, "
+            "         ROUND(SECONDS_BETWEEN(ENDED_AT_UTC, STARTED_AT_UTC) / 60.0, 1) AS DURATION_MINUTES, "
+            "         'CRITICAL' AS SEVERITY, NULL AS GROUND_TRUTH_HANDOFF_ID, NULL AS GROUND_TRUTH_CAUSE "
+            "  FROM HANDOFFGUARD.EXCURSIONS "
+            "  UNION ALL "
+            "  SELECT ID AS EXCURSION_ID, SHIPMENT_ID, STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
+            "         PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "         HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
+            "  FROM HANDOFFGUARD.EXCURSION_EVENTS "
+            ") t "
             "WHERE SHIPMENT_ID = {shipment_id} "
-            "ORDER BY STARTED_AT",
+            "ORDER BY STARTED_AT_UTC",
             {"shipment_id": str(shipment_id)},
         )
         return [self._row_to_excursion(r) for r in rows]
 
     async def get_by_id(self, excursion_id: str | int) -> Optional[ExcursionEvent]:
         rows = await get_pool().execute(
-            "SELECT ID AS EXCURSION_ID, SHIPMENT_ID, "
-            "       STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
-            "       PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
-            "       HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
-            "FROM HANDOFFGUARD.EXCURSION_EVENTS "
-            "WHERE ID = {excursion_id}",
+            "SELECT EXCURSION_ID, SHIPMENT_ID, STARTED_AT_UTC, ENDED_AT_UTC, "
+            "       PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "       GROUND_TRUTH_HANDOFF_ID, GROUND_TRUTH_CAUSE "
+            "FROM ("
+            "  SELECT EXCURSION_ID, SHIPMENT_ID, STARTED_AT_UTC, ENDED_AT_UTC, "
+            "         MAX_TEMP_C AS PEAK_TEMP_C, "
+            "         ROUND(SECONDS_BETWEEN(ENDED_AT_UTC, STARTED_AT_UTC) / 60.0, 1) AS DURATION_MINUTES, "
+            "         'CRITICAL' AS SEVERITY, NULL AS GROUND_TRUTH_HANDOFF_ID, NULL AS GROUND_TRUTH_CAUSE "
+            "  FROM HANDOFFGUARD.EXCURSIONS "
+            "  UNION ALL "
+            "  SELECT ID AS EXCURSION_ID, SHIPMENT_ID, STARTED_AT AS STARTED_AT_UTC, ENDED_AT AS ENDED_AT_UTC, "
+            "         PEAK_TEMPERATURE_C AS PEAK_TEMP_C, DURATION_MINUTES, SEVERITY, "
+            "         HANDOFF_ID AS GROUND_TRUTH_HANDOFF_ID, LIKELY_CAUSE AS GROUND_TRUTH_CAUSE "
+            "  FROM HANDOFFGUARD.EXCURSION_EVENTS "
+            ") t "
+            "WHERE EXCURSION_ID = {excursion_id}",
             {"excursion_id": str(excursion_id)},
         )
         return self._row_to_excursion(rows[0]) if rows else None

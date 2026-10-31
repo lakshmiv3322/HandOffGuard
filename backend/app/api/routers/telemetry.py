@@ -35,7 +35,7 @@ router = APIRouter(prefix="/api/shipments", tags=["Telemetry Drilldown"])
 
 @router.get("/{shipment_id}/telemetry-drilldown")
 async def get_telemetry_drilldown(
-    shipment_id: int,
+    shipment_id: str,
     shipment_repo=Depends(get_shipment_repo),
     product_repo=Depends(get_product_repo),
     handoff_repo=Depends(get_handoff_repo),
@@ -75,7 +75,7 @@ async def get_telemetry_drilldown(
 
     # 1. Gather all readings & calculate membership
     readings_data: List[Dict[str, Any]] = []
-    readings_by_lg: Dict[int, list] = {}
+    readings_by_lg: Dict[Any, list] = {}
 
     if is_exasol():
         from app.infrastructure.db.exasol_pool import get_pool
@@ -84,42 +84,42 @@ async def get_telemetry_drilldown(
         # Query all readings with logger device info
         readings_sql = (
             "SELECT r.reading_id, r.logger_id, ld.device_code, r.reading_at_utc, "
-            "       r.temperature_c, r.humidity_pct, r.battery_pct, r.quality_flag, "
+            "       r.temperature_c, r.battery_pct, "
             "       ld.clock_skew_seconds "
             "FROM HANDOFFGUARD.logger_readings r "
             "JOIN HANDOFFGUARD.logger_devices ld ON r.logger_id = ld.logger_id "
-            "WHERE ld.assigned_shipment_id = {sid!d} "
+            "WHERE ld.assigned_shipment_id = {sid} "
             "ORDER BY r.reading_at_utc"
         )
-        raw_rows = await pool.execute(readings_sql, {"sid": shipment_id})
+        raw_rows = await pool.execute(readings_sql, {"sid": str(shipment_id)})
 
         # Query interval membership view
         membership_sql = (
             "SELECT reading_id, handoff_id, handoff_type, membership_status "
             "FROM HANDOFFGUARD.v_reading_handoff_membership "
-            "WHERE shipment_id = {sid!d}"
+            "WHERE shipment_id = {sid}"
         )
-        membership_rows = await pool.execute(membership_sql, {"sid": shipment_id})
-        membership_map: Dict[int, Dict[str, Any]] = {}
-        for mr in membership_rows:
-            def _mk(n):
+        mem_rows = await pool.execute(membership_sql, {"sid": str(shipment_id)})
+        membership_map: Dict[Any, Dict[str, Any]] = {}
+        for mr in mem_rows:
+            def _mk(n: str):
                 return mr.get(n.upper()) or mr.get(n)
-            rid = int(_mk("reading_id"))
+            rid = _mk("reading_id")
             membership_map[rid] = {
-                "handoff_id": int(_mk("handoff_id")) if _mk("handoff_id") is not None else None,
+                "handoff_id": _mk("handoff_id"),
                 "handoff_type": str(_mk("handoff_type")) if _mk("handoff_type") else None,
-                "membership_status": str(_mk("membership_status")),
+                "membership_status": str(_mk("membership_status") or "unmatched").lower(),
             }
 
         for r in raw_rows:
-            def _k(n):
+            def _k(n: str):
                 return r.get(n.upper()) or r.get(n)
 
-            rid = int(_k("reading_id"))
-            lg_id = int(_k("logger_id"))
-            temp_c = float(_k("temperature_c"))
+            rid = _k("reading_id")
+            lg_id = _k("logger_id")
+            temp_c = float(_k("temperature_c") or 0.0)
             skew = int(_k("clock_skew_seconds") or 0)
-            raw_ts = str(_k("reading_at_utc"))
+            raw_ts = str(_k("reading_at_utc") or "")
 
             # Parse timestamp to calculate adjusted timestamp
             dt_raw = None
@@ -131,18 +131,19 @@ async def get_telemetry_drilldown(
                 except Exception:
                     dt_raw = datetime.now(timezone.utc)
 
-            dt_adj = dt_raw + timedelta(seconds=skew)
+            # SKEW CORRECTION: device clock minus reference UTC -> UTC = raw - skew
+            dt_adj = dt_raw - timedelta(seconds=skew)
             mem_info = membership_map.get(rid, {})
 
             readings_data.append({
                 "reading_id": rid,
                 "logger_id": lg_id,
-                "device_code": str(_k("device_code")),
+                "device_code": str(_k("device_code") or lg_id),
                 "reading_at_utc": dt_raw.isoformat(),
                 "adjusted_reading_at_utc": dt_adj.isoformat(),
                 "temperature_c": temp_c,
                 "clock_skew_seconds": skew,
-                "quality_flag": str(_k("quality_flag") or "valid"),
+                "quality_flag": "valid",  # LOGGER_READINGS table has no quality_flag column
                 "membership_status": mem_info.get("membership_status", "unmatched"),
                 "handoff_id": mem_info.get("handoff_id"),
                 "handoff_type": mem_info.get("handoff_type"),
@@ -158,34 +159,30 @@ async def get_telemetry_drilldown(
             lg = logger_map.get(rd.logger_id)
             skew = lg.clock_skew_seconds if lg else 0
             raw_dt = rd.recorded_at_utc
-            adj_dt = raw_dt + timedelta(seconds=skew)
+            adj_dt = raw_dt - timedelta(seconds=skew)
 
             # Match against handoffs
             matches = []
             for h in handoffs:
                 w_start = h.window_start_utc
                 w_end = h.window_end_utc
-                tol_start = w_start - timedelta(seconds=skew_tolerance)
-                tol_end = w_end + timedelta(seconds=skew_tolerance)
-
-                if tol_start <= adj_dt <= tol_end:
-                    is_skew_bound = not (w_start <= adj_dt <= w_end)
-                    matches.append((h, is_skew_bound))
+                if w_start <= adj_dt < w_end:
+                    matches.append(h)
 
             if len(matches) == 0:
                 mem_status = "unmatched"
                 matched_h = None
             elif len(matches) > 1:
                 mem_status = "ambiguous"
-                matched_h = matches[0][0]
+                matched_h = matches[0]
             else:
-                matched_h, is_skew_bound = matches[0]
-                mem_status = "matched_with_skew" if is_skew_bound else "matched"
+                matched_h = matches[0]
+                mem_status = "matched"
 
             readings_data.append({
                 "reading_id": rd.reading_id,
                 "logger_id": rd.logger_id,
-                "device_code": lg.device_type if lg else f"LOG-{rd.logger_id:03d}",
+                "device_code": lg.device_type if lg else f"LOG-{rd.logger_id}",
                 "reading_at_utc": raw_dt.isoformat(),
                 "adjusted_reading_at_utc": adj_dt.isoformat(),
                 "temperature_c": rd.temperature_c,
@@ -201,14 +198,13 @@ async def get_telemetry_drilldown(
     # Sort readings chronologically
     readings_data.sort(key=lambda r: r["reading_at_utc"])
 
-    # 2. Detect missing data gaps (> 2.5x sampling interval)
+    # 2. Detect missing data gaps (> 600s prototype default)
     gaps: List[Dict[str, Any]] = []
     for lg in loggers:
-        lg_readings = [r for r in readings_data if r["logger_id"] == lg.logger_id]
+        lg_readings = [r for r in readings_data if str(r["logger_id"]) == str(lg.logger_id)]
         if len(lg_readings) < 2:
             continue
-        interval_sec = max(60, lg.sampling_interval_seconds)
-        gap_limit = interval_sec * 2.5
+        gap_limit = 600.0  # 10 minutes prototype default
 
         for i in range(1, len(lg_readings)):
             t_prev = datetime.fromisoformat(lg_readings[i - 1]["reading_at_utc"])
@@ -224,10 +220,10 @@ async def get_telemetry_drilldown(
                 })
 
     # 3. Compute per-handoff exposures & attribution confidence
-    handoff_map: Dict[int, Dict[str, Any]] = {}
+    handoff_map: Dict[Any, Dict[str, Any]] = {}
     for h in handoffs:
         dwell_min = round((h.window_end_utc - h.window_start_utc).total_seconds() / 60.0, 1)
-        handoff_readings = [r for r in readings_data if r["handoff_id"] == h.handoff_id]
+        handoff_readings = [r for r in readings_data if str(r.get("handoff_id") or "") == str(h.handoff_id)]
         handoff_map[h.handoff_id] = {
             "handoff_id": h.handoff_id,
             "sequence_no": h.sequence_no,
@@ -247,52 +243,42 @@ async def get_telemetry_drilldown(
         }
 
     # Fetch attribution scores if an excursion exists
-    if excursions:
-        exc = excursions[0]
-        # Build readings_by_lg for domain engine
-        for lg in loggers:
-            readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
+    if excursions and is_exasol():
+        try:
+            from app.infrastructure.db.exasol_pool import get_pool
+            pool = get_pool()
+            exc = excursions[0]
+            attr_sql = (
+                "SELECT handoff_id, handoff_total_dm, exposure_share, evidence_status, "
+                "       supported_observation_minutes, ambiguous_minutes "
+                "FROM HANDOFFGUARD.v_excursion_attribution "
+                "WHERE excursion_id = {eid}"
+            )
+            attr_rows = await pool.execute(attr_sql, {"eid": str(exc.excursion_id)})
+            for ar in attr_rows:
+                def _ak(n: str):
+                    return ar.get(n.upper()) or ar.get(n)
+                hid = _ak("handoff_id")
+                tot_dm = float(_ak("handoff_total_dm") or 0.0)
+                share = round(float(_ak("exposure_share") or 0.0) * 100.0, 1)
+                ev_status = str(_ak("evidence_status") or "INCONCLUSIVE")
 
-        _, _, evidence_items = attribution_service.compute_attribution(
-            shipment=shipment,
-            product=product,
-            excursion=exc,
-            handoffs=handoffs,
-            loggers=loggers,
-            readings_by_logger=readings_by_lg,
-        )
-
-        for ev in evidence_items:
-            hid = ev["handoff_id"]
-            if hid in handoff_map:
-                handoff_map[hid]["exposure_degree_minutes"] = round(ev["exposure_degree_minutes"], 2)
-                handoff_map[hid]["exposure_share_pct"] = round(ev["exposure_share_pct"], 1)
-                handoff_map[hid]["attribution_confidence"] = ev["confidence_label"]
-                handoff_map[hid]["confidence_score"] = round(ev["confidence_score"], 2)
-                handoff_map[hid]["evidence_notes"] = ev["evidence_notes"]
-    else:
-        # If no explicit excursion, compute pure degree-minutes from exposure_service
-        for lg in loggers:
-            readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
-        exp_list, _, total_dm = exposure_service.compute_handoff_exposures(
-            handoffs=handoffs,
-            loggers=loggers,
-            readings_by_logger=readings_by_lg,
-            min_temp_c=min_safe,
-            max_temp_c=max_safe,
-        )
-        for exp in exp_list:
-            hid = exp.handoff.handoff_id
-            if hid in handoff_map:
-                handoff_map[hid]["exposure_degree_minutes"] = round(exp.exposure_degree_minutes, 2)
-                share = (exp.exposure_degree_minutes / total_dm * 100.0) if total_dm > 0 else 0.0
-                handoff_map[hid]["exposure_share_pct"] = round(share, 1)
-                handoff_map[hid]["evidence_notes"] = [
-                    f"Measured {round(exp.exposure_degree_minutes, 1)} °C·min exposure during {exp.handoff.handoff_type}.",
-                ]
+                for k, v in handoff_map.items():
+                    if str(k) == str(hid):
+                        v["exposure_degree_minutes"] = tot_dm
+                        v["exposure_share_pct"] = share
+                        v["attribution_confidence"] = "Prototype Ranking" if ev_status == "Unvalidated prototype ranking" else ev_status
+                        v["confidence_score"] = 0.85 if ev_status == "Unvalidated prototype ranking" else 0.2
+                        v["evidence_notes"] = [
+                            f"Evidence status: {ev_status}.",
+                            f"Exposure share: {share}% ({tot_dm:.1f} °C·min).",
+                            f"Supported observation: {float(_ak('supported_observation_minutes') or 0.0):.1f} min.",
+                        ]
+        except Exception:
+            pass
 
     return {
-        "shipment_id": shipment_id,
+        "shipment_id": str(shipment_id),
         "shipment_code": shipment.shipment_code,
         "engine": "exasol" if is_exasol() else "sqlite",
         "product": {

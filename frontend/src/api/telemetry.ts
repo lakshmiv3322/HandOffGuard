@@ -1,23 +1,23 @@
 import apiClient from './client';
 
 export interface DrilldownReading {
-  reading_id: number;
-  logger_id: number;
+  reading_id: string | number;
+  logger_id: string | number;
   device_code: string;
   reading_at_utc: string;
   adjusted_reading_at_utc: string;
   temperature_c: number;
   clock_skew_seconds: number;
   quality_flag: string;
-  membership_status: 'matched' | 'matched_with_skew' | 'ambiguous' | 'unmatched';
-  handoff_id: number | null;
+  membership_status: string;
+  handoff_id: string | number | null;
   handoff_type: string | null;
   is_above_safe: boolean;
   is_below_safe: boolean;
 }
 
 export interface DrilldownHandoff {
-  handoff_id: number;
+  handoff_id: string | number;
   sequence_no: number;
   handoff_type: string;
   from_party: string;
@@ -29,13 +29,13 @@ export interface DrilldownHandoff {
   reading_count: number;
   exposure_degree_minutes: number;
   exposure_share_pct: number;
-  attribution_confidence: 'high' | 'medium' | 'low';
+  attribution_confidence: string;
   confidence_score: number;
   evidence_notes: string[];
 }
 
 export interface DrilldownGap {
-  logger_id: number;
+  logger_id: string | number;
   device_code: string;
   gap_start_utc: string;
   gap_end_utc: string;
@@ -43,7 +43,7 @@ export interface DrilldownGap {
 }
 
 export interface DrilldownExcursion {
-  excursion_id: number;
+  excursion_id: string | number;
   started_at_utc: string;
   ended_at_utc: string;
   duration_minutes: number;
@@ -52,7 +52,7 @@ export interface DrilldownExcursion {
 }
 
 export interface TelemetryDrilldownData {
-  shipment_id: number;
+  shipment_id: string | number;
   shipment_code: string;
   engine: string;
   product: {

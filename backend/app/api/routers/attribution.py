@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -35,26 +34,27 @@ from app.infrastructure.repositories.base import (
 router = APIRouter(prefix="/api/excursions", tags=["Attribution"])
 
 EXPOSURE_LIMITATION_DISCLAIMER = (
-    "Exposure is estimated from ambient/logger temperature and time. It is not a direct "
-    "measurement of product-core temperature; thermal mass, packaging, and product-specific "
-    "heat transfer are not modelled in this prototype."
+    "Exposure is estimated from logger observations and stated modelling assumptions (default 600s gap limit). "
+    "Not a determination of product-core temperature, root cause or legal liability. Product disposition remains with the quality team."
 )
 
 ATTRIBUTION_LEGAL_DISCLAIMER = (
-    "This is an investigation aid. It does not determine product temperature, liability, or responsibility. Final disposition remains with the quality team."
+    "Investigation aid only. Associated custody segments are identified for diagnostic review, not legal fault assignment."
 )
 
 KNOWN_LIMITATIONS = [
     "Ambient logger readings serve as proxies for core payload temperatures.",
     "Thermal mass dampening and active cooling insulation are unmodelled.",
-    "Logger clock skew is treated as a static offset without dynamic drift adjustment.",
-    "Readings spanning overlapping handoff boundaries have exposure distributed proportionally.",
+    "Clock skew is corrected statically; dynamic clock drift is unmodelled.",
+    "Supported segments limited to maximum 600-second gap (engineering prototype default).",
+    "Overlapping custody windows are conservatively excluded from single-party attributable exposure.",
+    "Shipments with multiple analytical loggers require primary-logger selection.",
 ]
 
 
 @router.get("/{excursion_id}/attribution", response_model=AttributionResponse)
 async def get_excursion_attribution(
-    excursion_id: int,
+    excursion_id: str,
     excursion_repo: AbstractExcursionRepository = Depends(get_excursion_repo),
     attribution_repo: AbstractAttributionRepository = Depends(get_attribution_repo),
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
@@ -65,8 +65,8 @@ async def get_excursion_attribution(
 ):
     """
     Returns the attribution breakdown for an excursion, including ranked handoffs,
-    naive baseline comparison, and evidence notes.
-    If not yet persisted, computes on-the-fly and persists.
+    naive baseline comparison, evidence notes, and coverage status.
+    Source of truth: Exasol V_EXCURSION_ATTRIBUTION view.
     """
     excursion = await excursion_repo.get_by_id(excursion_id)
     if not excursion:
@@ -74,9 +74,6 @@ async def get_excursion_attribution(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Excursion {excursion_id} not found",
         )
-
-    # Check if already computed
-    stored_attrs = await attribution_repo.get_by_excursion(excursion_id)
 
     shipment = await shipment_repo.get_by_id(excursion.shipment_id)
     if not shipment or not shipment.product:
@@ -87,171 +84,143 @@ async def get_excursion_attribution(
 
     handoffs = await handoff_repo.get_by_shipment(shipment.shipment_id)
     loggers = await logger_repo.get_by_shipment(shipment.shipment_id)
-    readings_by_lg: dict[int, list] = {}
-    for lg in loggers:
-        readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
 
-    # Exasol View Execution
+    # Exasol View Execution — Source of Truth
     if is_exasol():
         from app.infrastructure.db.exasol_pool import get_pool
         pool = get_pool()
         sql = (
             "SELECT excursion_id, shipment_id, handoff_id, sequence_no, handoff_type, "
-            "       from_party, to_party, window_start_utc, window_end_utc, "
-            "       exc_start, exc_end, exc_duration_minutes, overlap_minutes, "
-            "       peak_temp_c, handoff_degree_minutes_above, handoff_degree_minutes_below, "
-            "       reading_count, ambiguous_reading_count, total_degree_minutes, "
-            "       exposure_share, skew_penalty, ambiguity_penalty, missing_data_penalty, "
-            "       attribution_score, confidence_level "
+            "       associated_party, to_party, location, window_source, "
+            "       window_start_utc, window_end_utc, exc_start, exc_end, "
+            "       exc_duration_minutes, exc_peak_temp_c, assigned_logger_count, "
+            "       reading_count, supported_observation_minutes, ambiguous_minutes, "
+            "       handoff_degree_minutes_above, handoff_degree_minutes_below, "
+            "       handoff_total_dm, total_excursion_dm, total_supported_obs_min, "
+            "       exposure_share, attribution_rank, evidence_status, disclaimer "
             "FROM HANDOFFGUARD.v_excursion_attribution "
-            "WHERE excursion_id = {eid!d} "
-            "ORDER BY attribution_score DESC"
+            "WHERE excursion_id = {eid} "
+            "ORDER BY attribution_rank ASC, sequence_no ASC"
         )
-        try:
-            rows = await pool.execute(sql, {"eid": excursion_id})
-            if rows:
-                ranked_items: list[AttributionHandoffItem] = []
-                for idx, r in enumerate(rows):
-                    def _k(n):
-                        return r.get(n.upper()) or r.get(n)
-                    hid = int(_k("handoff_id"))
-                    seq = int(_k("sequence_no"))
-                    score = float(_k("attribution_score") or 0.0)
-                    conf_lbl = str(_k("confidence_level") or "low")
-                    deg_above = float(_k("handoff_degree_minutes_above") or 0.0)
-                    deg_below = float(_k("handoff_degree_minutes_below") or 0.0)
-                    share = float(_k("exposure_share") or 0.0) * 100.0
+        rows = await pool.execute(sql, {"eid": str(excursion_id)})
+        if not rows:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No attribution records found in Exasol for excursion {excursion_id}",
+            )
 
-                    notes = [
-                        f"Exposure Share: {share:.1f}% based on Exasol interval-joined degree-minutes.",
-                        f"Thermal Exposure: {deg_above + deg_below:.1f} °C·min during custody window.",
-                    ]
-                    if float(_k("skew_penalty") or 0.0) > 0:
-                        notes.append("Applied penalty for clock skew > 120s.")
-                    if float(_k("ambiguity_penalty") or 0.0) > 0:
-                        notes.append("Applied penalty for overlapping handoff windows.")
-
-                    item = AttributionHandoffItem(
-                        rank=idx + 1,
-                        handoff_id=hid,
-                        handoff_label=f"{_k('from_party')} → {_k('to_party')} ({_k('handoff_type')})",
-                        sequence_no=seq,
-                        handoff_type=str(_k("handoff_type")),
-                        from_party=str(_k("from_party")),
-                        to_party=str(_k("to_party")),
-                        location="",
-                        exposure_degree_minutes=round(deg_above + deg_below, 2),
-                        exposure_share_pct=round(share, 1),
-                        allowed_excursion_time_consumed_pct=round(
-                            ((deg_above + deg_below) / max(1.0, shipment.product.allowed_excursion_minutes if shipment.product else 120.0)) * 100,
-                            1,
-                        ),
-                        confidence_score=round(score, 3),
-                        confidence_label=conf_lbl,
-                        duration_outside_safe_range_minutes=float(_k("overlap_minutes") or 0.0),
-                        peak_temp_c=float(_k("peak_temp_c") or excursion.peak_temp_c),
-                        reading_count=int(_k("reading_count") or 0),
-                        logger_ids=[str(lg.logger_id) for lg in loggers],
-                        clock_skew_corrections=[lg.clock_skew_seconds for lg in loggers],
-                        has_missing_gaps=float(_k("missing_data_penalty") or 0.0) > 0,
-                        has_overlapping_windows=float(_k("ambiguity_penalty") or 0.0) > 0,
-                        first_threshold_crossing_utc=None,
-                        evidence_notes=notes,
-                        matches_naive_baseline=(idx == 0),
-                    )
-                    ranked_items.append(item)
-
-                top_item = ranked_items[0] if ranked_items else None
-                naive_comp = NaiveBaselineComparison(
-                    handoff_id=ranked_items[1].handoff_id if len(ranked_items) > 1 and ranked_items[0].sequence_no == 4 else (top_item.handoff_id if top_item else None),
-                    handoff_label="First Crossing (Leg 2)" if len(ranked_items) > 1 and ranked_items[0].sequence_no == 4 else (top_item.handoff_label if top_item else "None"),
-                    first_crossing_utc=None,
-                    agrees_with_top_ranked=(top_item.sequence_no != 4) if top_item else True,
-                    explanation=(
-                        "Naive baseline blames Leg 2 due to initial threshold crossing at 8.4°C, but Exasol interval join and degree-minute attribution identifies Leg 4 as the most likely contributor (14.8°C thermal shock)."
-                        if top_item and top_item.sequence_no == 4
-                        else "Naive baseline agrees with highest thermal exposure handoff."
-                    ),
-                )
-
-                return AttributionResponse(
-                    excursion_id=excursion.excursion_id,
-                    excursion=ExcursionResponse.model_validate(excursion),
-                    ranked_handoffs=ranked_items,
-                    top_ranked_handoff=top_item,
-                    naive_baseline=naive_comp,
-                    disclaimer=f"{ATTRIBUTION_LEGAL_DISCLAIMER} {EXPOSURE_LIMITATION_DISCLAIMER}",
-                    limitations=KNOWN_LIMITATIONS,
-                )
-        except Exception:
-            pass  # Fallback to pure domain computation if view not yet populated
-
-    # If already computed and valid, we reconstruct the response
-    if stored_attrs:
         ranked_items: list[AttributionHandoffItem] = []
-        naive_comp: Optional[NaiveBaselineComparison] = None
+        for idx, r in enumerate(rows):
+            def _k(n: str):
+                return r.get(n.upper()) or r.get(n)
 
-        for idx, attr in enumerate(stored_attrs):
-            h = await handoff_repo.get_by_id(attr.handoff_id)
-            if not h:
-                continue
+            hid = _k("handoff_id")
+            seq = int(_k("sequence_no") or 0)
+            assoc_party = str(_k("associated_party") or "Unknown")
+            to_party = str(_k("to_party") or "Unknown")
+            htype = str(_k("handoff_type") or "Transit")
+            ev_status = str(_k("evidence_status") or "INCONCLUSIVE_INSUFFICIENT_DATA")
+            tot_dm = float(_k("handoff_total_dm") or 0.0)
+            share_pct = round(float(_k("exposure_share") or 0.0) * 100.0, 1)
+            supported_obs = float(_k("supported_observation_minutes") or 0.0)
+            ambiguous_min = float(_k("ambiguous_minutes") or 0.0)
+            assigned_loggers = int(_k("assigned_logger_count") or 0)
+            win_source = str(_k("window_source") or "ACTUAL")
 
-            ev_dict = {}
-            if attr.evidence_json:
-                try:
-                    ev_dict = json.loads(attr.evidence_json)
-                except Exception:
-                    pass
+            # Confidence score and label based on evidence status
+            if ev_status == "Unvalidated prototype ranking":
+                conf_score = 0.85
+                conf_label = "Prototype Ranking"
+            elif ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA":
+                conf_score = 0.10
+                conf_label = "Inconclusive (Data Gap)"
+            elif ev_status == "INCONCLUSIVE_MULTI_LOGGER":
+                conf_score = 0.20
+                conf_label = "Inconclusive (Multi-Logger)"
+            elif ev_status == "EXCLUDED_PLANNED_ONLY":
+                conf_score = 0.0
+                conf_label = "Excluded (Planned Only)"
+            else:
+                conf_score = 0.50
+                conf_label = ev_status
+
+            notes = [
+                f"Evidence status: {ev_status}.",
+                f"Exposure share: {share_pct}% ({tot_dm:.1f} °C·min) restricted to excursion window.",
+                f"Supported observation: {supported_obs:.1f} min | Ambiguous: {ambiguous_min:.1f} min.",
+            ]
+            if win_source == "PLANNED_ONLY":
+                notes.append("Custody window lacks actual timestamps. Excluded from actual custody attribution.")
+            if assigned_loggers > 1:
+                notes.append(f"Warning: {assigned_loggers} loggers assigned. Single-logger MVP rule active.")
+            if ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA":
+                notes.append("Warning: Sparse data or gaps > 600s. Zero exposure does not prove thermal safety.")
+            if ambiguous_min > 0:
+                notes.append(f"Excluded {ambiguous_min:.1f} min of ambiguous overlapping custody.")
 
             item = AttributionHandoffItem(
                 rank=idx + 1,
-                handoff_id=h.handoff_id,
-                handoff_label=ev_dict.get("handoff_label", f"{h.from_party} → {h.to_party} ({h.location})"),
-                sequence_no=h.sequence_no,
-                handoff_type=h.handoff_type,
-                from_party=h.from_party,
-                to_party=h.to_party,
-                location=h.location,
-                exposure_degree_minutes=attr.exposure_degree_minutes,
-                exposure_share_pct=attr.exposure_share_pct,
-                allowed_excursion_time_consumed_pct=ev_dict.get(
-                    "allowed_excursion_time_consumed_pct",
-                    round((attr.exposure_degree_minutes / max(1.0, shipment.product.allowed_excursion_minutes)) * 100, 1),
+                handoff_id=hid,
+                handoff_label=f"{assoc_party} → {to_party} ({htype})",
+                sequence_no=seq,
+                handoff_type=htype,
+                from_party=assoc_party,
+                to_party=to_party,
+                location=str(_k("location") or ""),
+                exposure_degree_minutes=tot_dm,
+                exposure_share_pct=share_pct,
+                allowed_excursion_time_consumed_pct=round(
+                    (tot_dm / max(1.0, shipment.product.allowed_excursion_minutes if shipment.product else 120.0)) * 100.0,
+                    1,
                 ),
-                confidence_score=attr.confidence_score,
-                confidence_label=attr.confidence_label,
-                duration_outside_safe_range_minutes=ev_dict.get("duration_outside_safe_range_minutes", 0.0),
-                peak_temp_c=ev_dict.get("peak_temp_c", excursion.peak_temp_c),
-                reading_count=ev_dict.get("reading_count", 0),
-                logger_ids=ev_dict.get("logger_ids", [str(lg.logger_id) for lg in loggers]),
-                clock_skew_corrections=ev_dict.get("clock_skew_corrections", [lg.clock_skew_seconds for lg in loggers]),
-                has_missing_gaps=ev_dict.get("has_missing_gaps", False),
-                has_overlapping_windows=ev_dict.get("has_overlapping_windows", False),
-                first_threshold_crossing_utc=ev_dict.get("first_threshold_crossing_utc"),
-                evidence_notes=ev_dict.get("evidence_notes", []),
-                matches_naive_baseline=ev_dict.get("matches_naive_baseline", False),
+                confidence_score=conf_score,
+                confidence_label=conf_label,
+                duration_outside_safe_range_minutes=supported_obs,
+                peak_temp_c=float(_k("exc_peak_temp_c") or excursion.peak_temp_c),
+                reading_count=int(_k("reading_count") or 0),
+                logger_ids=[str(lg.logger_id) for lg in loggers],
+                clock_skew_corrections=[lg.clock_skew_seconds for lg in loggers],
+                has_missing_gaps=(ev_status == "INCONCLUSIVE_INSUFFICIENT_DATA"),
+                has_overlapping_windows=(ambiguous_min > 0),
+                first_threshold_crossing_utc=None,
+                evidence_notes=notes,
+                matches_naive_baseline=False,
             )
             ranked_items.append(item)
 
-        # Naive baseline comparison
-        _, naive_base, _ = attribution_service.compute_attribution(
-            shipment=shipment,
-            product=shipment.product,
-            excursion=excursion,
-            handoffs=handoffs,
-            loggers=loggers,
-            readings_by_logger=readings_by_lg,
-        )
+        top_item = ranked_items[0] if ranked_items else None
+
+        # Determine naive baseline (first handoff whose window contains excursion start)
+        first_crossing_handoff = None
+        for h in handoffs:
+            if h.window_start_utc <= excursion.started_at_utc < h.window_end_utc:
+                first_crossing_handoff = h
+                break
+
+        agrees = False
+        if top_item and first_crossing_handoff:
+            agrees = str(top_item.handoff_id) == str(first_crossing_handoff.handoff_id)
 
         naive_comp = NaiveBaselineComparison(
-            handoff_id=naive_base.naive_handoff_id,
-            handoff_label=naive_base.naive_handoff_label,
-            first_crossing_utc=None,
-            agrees_with_top_ranked=naive_base.agree,
-            explanation=naive_base.explanation,
+            handoff_id=first_crossing_handoff.handoff_id if first_crossing_handoff else None,
+            handoff_label=(
+                f"{first_crossing_handoff.from_party} → {first_crossing_handoff.to_party} ({first_crossing_handoff.handoff_type})"
+                if first_crossing_handoff else "Unknown"
+            ),
+            first_crossing_utc=excursion.started_at_utc.isoformat() if excursion.started_at_utc else None,
+            agrees_with_top_ranked=agrees,
+            explanation=(
+                f"Naive baseline attributes to initial threshold crossing at {excursion.started_at_utc}. "
+                + (
+                    "Exasol degree-minute attribution agrees with first-crossing custody."
+                    if agrees else
+                    f"However, cumulative degree-minute attribution identifies {top_item.handoff_label if top_item else 'another leg'} as primary contributor."
+                )
+            ),
         )
 
-        top_item = ranked_items[0] if ranked_items else None
+        if top_item and agrees:
+            top_item.matches_naive_baseline = True
 
         return AttributionResponse(
             excursion_id=excursion.excursion_id,
@@ -263,7 +232,11 @@ async def get_excursion_attribution(
             limitations=KNOWN_LIMITATIONS,
         )
 
-    # Otherwise compute, persist, and return
+    # Dev / SQLite fallback (when not Exasol)
+    readings_by_lg: dict[int, list] = {}
+    for lg in loggers:
+        readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
+
     computed_attrs, naive_res, evidence_list = attribution_service.compute_attribution(
         shipment=shipment,
         product=shipment.product,
@@ -301,7 +274,7 @@ async def get_excursion_attribution(
 
 @router.post("/{excursion_id}/recompute", response_model=AttributionResponse)
 async def recompute_excursion_attribution(
-    excursion_id: int,
+    excursion_id: str,
     excursion_repo: AbstractExcursionRepository = Depends(get_excursion_repo),
     attribution_repo: AbstractAttributionRepository = Depends(get_attribution_repo),
     shipment_repo: AbstractShipmentRepository = Depends(get_shipment_repo),
@@ -311,155 +284,15 @@ async def recompute_excursion_attribution(
     attribution_service: AttributionService = Depends(get_attribution_service),
 ):
     """
-    Idempotently recomputes attribution ranking, updates attribution_results,
-    and returns refreshed breakdown.
+    Idempotently recomputes attribution ranking against the database views.
     """
-    excursion = await excursion_repo.get_by_id(excursion_id)
-    if not excursion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Excursion {excursion_id} not found",
-        )
-
-    shipment = await shipment_repo.get_by_id(excursion.shipment_id)
-    if not shipment or not shipment.product:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Shipment or product data missing for excursion",
-        )
-
-    handoffs = await handoff_repo.get_by_shipment(shipment.shipment_id)
-    loggers = await logger_repo.get_by_shipment(shipment.shipment_id)
-    readings_by_lg: dict[int, list] = {}
-    for lg in loggers:
-        readings_by_lg[lg.logger_id] = await reading_repo.get_by_logger(lg.logger_id)
-
-    # Exasol View Execution
-    if is_exasol():
-        from app.infrastructure.db.exasol_pool import get_pool
-        pool = get_pool()
-        sql = (
-            "SELECT excursion_id, shipment_id, handoff_id, sequence_no, handoff_type, "
-            "       from_party, to_party, window_start_utc, window_end_utc, "
-            "       exc_start, exc_end, exc_duration_minutes, overlap_minutes, "
-            "       peak_temp_c, handoff_degree_minutes_above, handoff_degree_minutes_below, "
-            "       reading_count, ambiguous_reading_count, total_degree_minutes, "
-            "       exposure_share, skew_penalty, ambiguity_penalty, missing_data_penalty, "
-            "       attribution_score, confidence_level "
-            "FROM HANDOFFGUARD.v_excursion_attribution "
-            "WHERE excursion_id = {eid!d} "
-            "ORDER BY attribution_score DESC"
-        )
-        try:
-            rows = await pool.execute(sql, {"eid": excursion_id})
-            if rows:
-                ranked_items: list[AttributionHandoffItem] = []
-                for idx, r in enumerate(rows):
-                    def _k(n):
-                        return r.get(n.upper()) or r.get(n)
-                    hid = int(_k("handoff_id"))
-                    seq = int(_k("sequence_no"))
-                    score = float(_k("attribution_score") or 0.0)
-                    conf_lbl = str(_k("confidence_level") or "low")
-                    deg_above = float(_k("handoff_degree_minutes_above") or 0.0)
-                    deg_below = float(_k("handoff_degree_minutes_below") or 0.0)
-                    share = float(_k("exposure_share") or 0.0) * 100.0
-
-                    notes = [
-                        f"Exposure Share: {share:.1f}% based on Exasol interval-joined degree-minutes.",
-                        f"Thermal Exposure: {deg_above + deg_below:.1f} °C·min during custody window.",
-                    ]
-                    if float(_k("skew_penalty") or 0.0) > 0:
-                        notes.append("Applied penalty for clock skew > 120s.")
-                    if float(_k("ambiguity_penalty") or 0.0) > 0:
-                        notes.append("Applied penalty for overlapping handoff windows.")
-
-                    item = AttributionHandoffItem(
-                        rank=idx + 1,
-                        handoff_id=hid,
-                        handoff_label=f"{_k('from_party')} → {_k('to_party')} ({_k('handoff_type')})",
-                        sequence_no=seq,
-                        handoff_type=str(_k("handoff_type")),
-                        from_party=str(_k("from_party")),
-                        to_party=str(_k("to_party")),
-                        location="",
-                        exposure_degree_minutes=round(deg_above + deg_below, 2),
-                        exposure_share_pct=round(share, 1),
-                        allowed_excursion_time_consumed_pct=round(
-                            ((deg_above + deg_below) / max(1.0, shipment.product.allowed_excursion_minutes if shipment.product else 120.0)) * 100,
-                            1,
-                        ),
-                        confidence_score=round(score, 3),
-                        confidence_label=conf_lbl,
-                        duration_outside_safe_range_minutes=float(_k("overlap_minutes") or 0.0),
-                        peak_temp_c=float(_k("peak_temp_c") or excursion.peak_temp_c),
-                        reading_count=int(_k("reading_count") or 0),
-                        logger_ids=[str(lg.logger_id) for lg in loggers],
-                        clock_skew_corrections=[lg.clock_skew_seconds for lg in loggers],
-                        has_missing_gaps=float(_k("missing_data_penalty") or 0.0) > 0,
-                        has_overlapping_windows=float(_k("ambiguity_penalty") or 0.0) > 0,
-                        first_threshold_crossing_utc=None,
-                        evidence_notes=notes,
-                        matches_naive_baseline=(idx == 0),
-                    )
-                    ranked_items.append(item)
-
-                top_item = ranked_items[0] if ranked_items else None
-                naive_comp = NaiveBaselineComparison(
-                    handoff_id=ranked_items[1].handoff_id if len(ranked_items) > 1 and ranked_items[0].sequence_no == 4 else (top_item.handoff_id if top_item else None),
-                    handoff_label="First Crossing (Leg 2)" if len(ranked_items) > 1 and ranked_items[0].sequence_no == 4 else (top_item.handoff_label if top_item else "None"),
-                    first_crossing_utc=None,
-                    agrees_with_top_ranked=(top_item.sequence_no != 4) if top_item else True,
-                    explanation=(
-                        "Naive baseline blames Leg 2 due to initial threshold crossing at 8.4°C, but Exasol interval join and degree-minute attribution identifies Leg 4 as the most likely contributor (14.8°C thermal shock)."
-                        if top_item and top_item.sequence_no == 4
-                        else "Naive baseline agrees with highest thermal exposure handoff."
-                    ),
-                )
-
-                return AttributionResponse(
-                    excursion_id=excursion.excursion_id,
-                    excursion=ExcursionResponse.model_validate(excursion),
-                    ranked_handoffs=ranked_items,
-                    top_ranked_handoff=top_item,
-                    naive_baseline=naive_comp,
-                    disclaimer=f"{ATTRIBUTION_LEGAL_DISCLAIMER} {EXPOSURE_LIMITATION_DISCLAIMER}",
-                    limitations=KNOWN_LIMITATIONS,
-                )
-        except Exception:
-            pass  # Fallback to pure domain computation if view not yet populated
-
-    computed_attrs, naive_res, evidence_list = attribution_service.compute_attribution(
-        shipment=shipment,
-        product=shipment.product,
-        excursion=excursion,
-        handoffs=handoffs,
-        loggers=loggers,
-        readings_by_logger=readings_by_lg,
-    )
-
-    # Persist in DB (idempotent upsert)
-    await attribution_repo.upsert_results(computed_attrs)
-
-    ranked_items = [
-        AttributionHandoffItem.model_validate(ev) for ev in evidence_list
-    ]
-    top_item = ranked_items[0] if ranked_items else None
-
-    naive_comp = NaiveBaselineComparison(
-        handoff_id=naive_res.naive_handoff_id,
-        handoff_label=naive_res.naive_handoff_label,
-        first_crossing_utc=None,
-        agrees_with_top_ranked=naive_res.agree,
-        explanation=naive_res.explanation,
-    )
-
-    return AttributionResponse(
-        excursion_id=excursion.excursion_id,
-        excursion=ExcursionResponse.model_validate(excursion),
-        ranked_handoffs=ranked_items,
-        top_ranked_handoff=top_item,
-        naive_baseline=naive_comp,
-        disclaimer=f"{ATTRIBUTION_LEGAL_DISCLAIMER} {EXPOSURE_LIMITATION_DISCLAIMER}",
-        limitations=KNOWN_LIMITATIONS,
+    return await get_excursion_attribution(
+        excursion_id=excursion_id,
+        excursion_repo=excursion_repo,
+        attribution_repo=attribution_repo,
+        shipment_repo=shipment_repo,
+        handoff_repo=handoff_repo,
+        logger_repo=logger_repo,
+        reading_repo=reading_repo,
+        attribution_service=attribution_service,
     )
